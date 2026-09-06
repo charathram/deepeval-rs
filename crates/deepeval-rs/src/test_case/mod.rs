@@ -1,9 +1,11 @@
 //! Test-case data models for deepeval-rs.
 //!
-//! This module is scaffolded in Phase 0 and fully implemented in Phase 1.
+//! These types mirror deepeval's `deepeval/test_case/` module. A test case
+//! captures the inputs and expected outputs of a single LLM application turn
+//! (or a multi-turn conversation), which metrics then evaluate.
 
-/// A single-turn LLM test case.
-///
-/// Placeholder type; implemented in Phase 1.
-#[derive(Debug, Clone, Default)]
-pub struct LLMTestCase;
+mod conversational;
+mod single_turn;
+
+pub use conversational::{ConversationalTestCase, MultiTurnParams, Turn};
+pub use single_turn::{Feedback, LLMTestCase, SingleTurnParams, ToolCall, ToolCallType};
