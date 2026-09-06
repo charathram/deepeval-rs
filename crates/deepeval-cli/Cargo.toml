@@ -1,0 +1,19 @@
+[package]
+name = "deepeval-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "CLI for the deepeval-rs LLM evaluation framework."
+
+[[bin]]
+name = "deepeval"
+path = "src/main.rs"
+
+[dependencies]
+deepeval = { path = "../deepeval", features = ["cli"] }
+tokio.workspace = true
+clap.workspace = true
+anyhow = "1"
