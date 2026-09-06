@@ -17,8 +17,8 @@ pull request.
 | ----- | ----------- | ------ |
 | 0 | Workspace scaffold, error types, CI | ✅ merged |
 | 1 | Core test-case types + rig-backed LLM layer | ✅ merged |
-| 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | 🔜 next |
-| 3 | Core LLM-judge + deterministic metrics | ⏳ planned |
+| 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
+| 3 | Core LLM-judge + deterministic metrics | 🔜 next |
 | 4 | RAG metrics | ⏳ planned |
 | 5 | Multi-turn + agentic metrics | ⏳ planned |
 | 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
@@ -77,10 +77,52 @@ let request = LlmRequest::new(vec![ChatMessage::user("Say hi.")]);
 let response = provider.complete(request).await?;
 ```
 
+### `metrics` — the `Metric` trait
+
+- **`Metric`** — the object-safe trait all metrics implement. Methods: `name`,
+  `threshold`, `measure` (async, records score/reason/success on `self`),
+  `is_successful`, `score`, `reason`, `clone_box`.
+- **`MetricConfig`** — shared configuration (threshold, include_reason,
+  strict_mode, async_mode, verbose_mode).
+- **`MetricResult`** — the serializable output of a single measurement.
+
+### `template` — Jinja-compatible prompt templating
+
+- **`TemplateRegistry`** — registers and renders prompt templates keyed by
+  `(metric_class_name, method)` using [`minijinja`](https://github.com/mitsuhiko/minijinja).
+- **`resolve_template`** — convenience wrapper.
+
+```rust
+use deepeval_rs::template::TemplateRegistry;
+use minijinja::Value;
+use std::collections::HashMap;
+
+let mut registry = TemplateRegistry::new();
+registry.register("MyMetric", "greet", "Hello, {{ name }}!");
+let ctx = HashMap::from([("name".to_string(), Value::from("world"))]);
+let out = registry.resolve("MyMetric", "greet", &ctx)?;
+```
+
+### `eval` — evaluation orchestration
+
+- **`evaluate`** — runs a set of metrics over a set of test cases concurrently
+  (bounded by a semaphore) and returns an [`EvalReport`].
+- **`assert_test`** — runs metrics over a single test case and returns an error
+  if any metric fails (the plain-library analogue of deepeval's `assert_test`).
+- **`EvalReport`** / **`CaseReport`** — serializable results with pass/fail/
+  skipped/errored counts.
+
+```rust
+use deepeval_rs::eval::assert_test;
+use deepeval_rs::test_case::LLMTestCase;
+
+let test_case = LLMTestCase::builder().input("hi").build();
+// metrics: Vec<Box<dyn Metric>>
+assert_test(&test_case, &metrics).await?;
+```
+
 ## Roadmap
 
-- **Phase 2** — the core engine: the `Metric` trait, Jinja-compatible prompt
-  templating (`minijinja`), and `evaluate`/`assert_test` orchestration.
 - **Phase 3** — core LLM-judge metrics (G-Eval, answer relevancy, faithfulness,
   hallucination, prompt alignment) and deterministic metrics (exact match,
   pattern match, JSON correctness).
