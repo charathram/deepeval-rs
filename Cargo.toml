@@ -18,7 +18,7 @@ authors = ["charathram"]
 tokio = { version = "1", features = ["full"] }
 
 # LLM interactions (single transport for all providers)
-rig = { version = "0.42", default-features = false, features = ["rustls"] }
+rig = { version = "0.42", default-features = false, features = ["rustls", "test-utils"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
