@@ -1876,6 +1876,16 @@ dependencies = [
 name = "deepeval"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "clap",
+ "deepeval-rs",
+ "tokio",
+]
+
+[[package]]
+name = "deepeval-rs"
+version = "0.1.0"
+dependencies = [
  "async-trait",
  "clap",
  "futures",
@@ -1888,16 +1898,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "deepeval-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "deepeval",
- "tokio",
 ]
 
 [[package]]

@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/deepeval-rs",
     "crates/deepeval",
-    "crates/deepeval-cli",
 ]
 
 [workspace.package]

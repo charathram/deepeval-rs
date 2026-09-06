@@ -1,0 +1,38 @@
+[package]
+name = "deepeval-rs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "The LLM evaluation framework for Rust — a port of deepeval."
+keywords = ["llm", "evaluation", "metrics", "testing", "ai"]
+categories = ["development-tools::testing", "artificial-intelligence"]
+
+[dependencies]
+tokio.workspace = true
+rig.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+minijinja.workspace = true
+thiserror.workspace = true
+regex.workspace = true
+futures.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tracing-subscriber.workspace = true
+
+[features]
+default = ["openai", "anthropic", "openai-compatible"]
+openai = []
+anthropic = []
+openai-compatible = []
+embeddings = []
+cli = ["dep:clap"]
+
+[dependencies.clap]
+workspace = true
+optional = true

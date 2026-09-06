@@ -11,9 +11,9 @@
 //! ## Quickstart
 //!
 //! ```ignore
-//! use deepeval::test_case::LLMTestCase;
-//! use deepeval::metrics::AnswerRelevancyMetric;
-//! use deepeval::eval::assert_test;
+//! use deepeval_rs::test_case::LLMTestCase;
+//! use deepeval_rs::metrics::AnswerRelevancyMetric;
+//! use deepeval_rs::eval::assert_test;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
