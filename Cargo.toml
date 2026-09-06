@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/deepeval-rs",
+    "crates/deepeval",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.96"
+license = "Apache-2.0"
+repository = "https://github.com/charathram/deepeval-rs"
+authors = ["charathram"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# LLM interactions (single transport for all providers)
+rig = { version = "0.42", default-features = false, features = ["rustls"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async trait object safety
+async-trait = "0.1"
+
+# Jinja-compatible prompt templating
+minijinja = "2"
+
+# Error handling
+thiserror = "2"
+
+# Deterministic metrics
+regex = "1"
+
+# Concurrency
+futures = "0.3"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI (feature-gated)
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+lto = "thin"
