@@ -8,6 +8,12 @@ with research-backed metrics such as G-Eval, answer relevancy, faithfulness, and
 hallucination. Metrics run asynchronously and can be composed into an
 `evaluate` run over many test cases.
 
+## Documentation
+
+- [Getting Started](docs/getting-started.md) — how to use the library.
+- [The `deepeval` CLI](docs/cli.md) — the command-line tool.
+- [Docs index](docs/README.md).
+
 ## Status
 
 This project is under active development, phase by phase. Each phase lands as a
