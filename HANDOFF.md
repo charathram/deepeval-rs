@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-06 · After Phase 4 (PR #9)
+> Last updated: 2026-09-07 · After Phase 5 (PR #10)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -21,8 +21,8 @@ faithfulness, hallucination, etc.).
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
-| 5 | Multi-turn + agentic metrics | 🔜 next |
-| 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
+| 5 | Multi-turn + agentic metrics | ✅ merged |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ⏳ planned |
 
 ## Repository layout
 
@@ -36,7 +36,7 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   workflows/ci.yml                   # fmt + clippy + test
 ```
 
-## What's implemented (as of Phase 4)
+## What's implemented (as of Phase 5)
 
 ### `test_case` module (`crates/deepeval-rs/src/test_case/`)
 - `LLMTestCase` + builder — single-turn test case (input, actual_output,
@@ -58,25 +58,41 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 - `Metric` trait — object-safe (`async_trait` + `Send + Sync`). Methods: `name`,
   `threshold`, `measure` (async), `is_successful`, `score`, `reason`, `skipped`,
   `clone_box`. `Box<dyn Metric>` is `Clone` via `clone_box`.
+- `ConversationalMetric` trait — twin trait for multi-turn metrics (same shape as
+  `Metric` but `measure` takes a `ConversationalTestCase`).
 - `MetricConfig` — threshold, include_reason, strict_mode, async_mode, verbose_mode.
 - `MetricResult` — serializable measurement output.
 - `MetricState` — shared in-memory measurement state (config + score/reason/skipped);
   cloning resets measurement fields so a cloned metric starts fresh.
 - `impl_metric!` macro — generates the boilerplate `Metric` impl for a metric
   type exposing a `state: MetricState` field and a `measure_impl` method.
+- `impl_conversational_metric!` macro — same, for `ConversationalMetric`.
 - `llm_judge` module — shared LLM-judge flow: validate required fields → render
   prompt → `provider.complete_structured` → parse `{score, reason}` verdict →
   clamp score to 0–1.
+- `conversational_llm_judge` module — shared multi-turn LLM-judge flow.
+  `measure_conversation_llm_judge(required, provider, registry, class_name,
+  method, extra_context, test_case)` returns `Ok(None)` when no turn satisfies
+  all required fields (metric marked skipped), otherwise `Ok(Some(score))`. It
+  auto-injects a `dialog` variable and the `turns` field fragments.
 - **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
   `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
 - **RAG metrics (LLM-judge):** `ContextualPrecisionMetric`,
   `ContextualRecallMetric`, `ContextualRelevancyMetric`, and the composite
   `RagasMetric` (averages answer relevancy, faithfulness, contextual precision,
   contextual recall).
+- **Multi-turn metrics (LLM-judge):** `ConversationCompletenessMetric`,
+  `TurnRelevancyMetric`, `TurnFaithfulnessMetric`, `KnowledgeRetentionMetric`,
+  `RoleAdherenceMetric`.
+- **Agentic metrics (LLM-judge, over a `ConversationalTestCase`):**
+  `TaskCompletionMetric`, `GoalAccuracyMetric`, `StepEfficiencyMetric`,
+  `ToolCorrectnessMetric`, `ToolUseMetric`, `PlanAdherenceMetric`,
+  `PlanQualityMetric`, `ArgumentCorrectnessMetric`, `ConversationSummaryMetric`.
 - **Deterministic metrics (no LLM):** `ExactMatchMetric`, `PatternMatchMetric`
   (`regex`), `JsonCorrectnessMetric`.
 - Prompt templates live in `crates/deepeval-rs/templates/` (e.g.
-  `geval/generate_verdict.txt`, `contextual_precision/generate_verdict.txt`).
+  `geval/generate_verdict.txt`, `contextual_precision/generate_verdict.txt`,
+  `turn_faithfulness/generate_verdict.txt`, `tool_correctness/generate_verdict.txt`).
 - `Provider` (in `llm_judge`) — a `Debug`/`Clone` wrapper around
   `Arc<dyn LlmProvider>` that also implements `LlmProvider` (delegating to the
   inner provider), so it can be passed to sub-metric builders (used by
@@ -90,6 +106,9 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 ### `eval` module (`crates/deepeval-rs/src/eval/`)
 - `evaluate` — runs metrics over test cases concurrently (semaphore-bounded,
   default 10), groups results by test case, returns `EvalReport`.
+- `evaluate_conversational` — multi-turn analogue; runs
+  `ConversationalMetric`s over `ConversationalTestCase`s, grouped by the first
+  turn's input.
 - `assert_test` — runs metrics over one test case; returns
   `EvalError::AssertionFailed` if any metric fails.
 - `EvalReport` / `CaseReport` — serializable results with pass/fail/skipped/
@@ -138,16 +157,22 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 - **`evaluate` groups results by test-case input string.** Two test cases with
   the same `input` collapse into one `CaseReport`. This is a known simplification;
   revisit if distinct-but-identical inputs need separate reports.
+  `evaluate_conversational` groups by the first turn's input (empty string when a
+  case has no turns).
+- **`conversational_llm_judge::measure_conversation_llm_judge` returns only the
+  score (`Option<f32>`), not a reason.** Multi-turn metrics therefore leave
+  `reason` unset; extend the helper if reasons are wanted later.
 - **Feature flags** `openai`/`anthropic`/`openai-compatible` are placeholders
   (empty). Concrete provider constructors (e.g. `OpenAIProvider::from_env()`) are
   not yet written — `RigProvider` already supports any rig model, so wiring a
   specific provider is a thin constructor.
 
-## What's next (Phase 5)
+## What's next (Phase 6)
 
-Multi-turn and agentic metrics. The multi-turn data model
-(`ConversationalTestCase`, `Turn`, `MultiTurnParams`) already exists in
-`test_case`; Phase 5 wires it up to metrics and `evaluate`.
+Hardening, GEval logprob scoring, the `deepeval` CLI (`test run`), and full
+examples/docs coverage. The agentic metric required-field lists are not yet
+exposed as user-facing knobs (e.g. choosing which fields per turn) beyond what
+`Turn`/`MultiTurnParams` provide.
 
 ## Verification commands
 

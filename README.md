@@ -26,8 +26,8 @@ pull request.
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
-| 5 | Multi-turn + agentic metrics | 🔜 next |
-| 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
+| 5 | Multi-turn + agentic metrics | ✅ merged |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ⏳ planned |
 
 ## Workspace layout
 
@@ -88,6 +88,9 @@ let response = provider.complete(request).await?;
 - **`Metric`** — the object-safe trait all metrics implement. Methods: `name`,
   `threshold`, `measure` (async, records score/reason/success on `self`),
   `is_successful`, `score`, `reason`, `skipped`, `clone_box`.
+- **`ConversationalMetric`** — the twin trait for multi-turn metrics. Same shape
+  as `Metric`, but `measure` takes a [`ConversationalTestCase`]. Used by the
+  multi-turn and agentic metrics below.
 - **`MetricConfig`** — shared configuration (threshold, include_reason,
   strict_mode, async_mode, verbose_mode).
 - **`MetricResult`** — the serializable output of a single measurement.
@@ -142,6 +145,49 @@ let geval = GEval::builder()
     .build();
 ```
 
+**Multi-turn & agentic metrics** (LLM-judge over a [`ConversationalTestCase`];
+each turn can carry an input, output, retrieval context, expected tools, etc.):
+
+- **`ConversationCompletenessMetric`** — how well the conversation covers what
+  the user asked for.
+- **`TurnRelevancyMetric`** — how relevant each turn's output is to the input.
+- **`TurnFaithfulnessMetric`** — whether each turn's output stays grounded in its
+  retrieval context.
+- **`KnowledgeRetentionMetric`** — whether the agent retains information across
+  turns.
+- **`RoleAdherenceMetric`** — whether the agent stays in character/role.
+- **`TaskCompletionMetric`** — whether the agent accomplishes the requested task.
+- **`GoalAccuracyMetric`** — whether the outcome matches the expected goal.
+- **`StepEfficiencyMetric`** — whether the agent took an efficient number of steps.
+- **`ToolCorrectnessMetric`** — whether the agent's tool calls match the expected
+  tools and arguments.
+- **`ToolUseMetric`** — whether the agent uses the right tools at the right times.
+- **`PlanAdherenceMetric`** — whether the agent follows its stated plan.
+- **`PlanQualityMetric`** — whether the plan is sound.
+- **`ArgumentCorrectnessMetric`** — whether the agent's reasoning is correct.
+- **`ConversationSummaryMetric`** — how well the output summarizes the
+  conversation.
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::{ConversationalMetric, TurnFaithfulnessMetric};
+use deepeval_rs::test_case::{ConversationalTestCase, Turn};
+
+let test_case = ConversationalTestCase::builder()
+    .turns(vec![Turn::builder()
+        .input("What is the return policy?")
+        .actual_output("We offer a 30-day full refund.")
+        .retrieval_context(vec!["30 day full refund.".to_string()])
+        .build()])
+    .build();
+
+let mut metric = TurnFaithfulnessMetric::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.9, "reason": "grounded"}"#))
+    .threshold(0.7)
+    .build();
+metric.measure(&test_case).await?; // implements ConversationalMetric
+```
+
 ### `template` — Jinja-compatible prompt templating
 
 - **`TemplateRegistry`** — registers and renders prompt templates keyed by
@@ -161,8 +207,11 @@ let out = registry.resolve("MyMetric", "greet", &ctx)?;
 
 ### `eval` — evaluation orchestration
 
-- **`evaluate`** — runs a set of metrics over a set of test cases concurrently
-  (bounded by a semaphore) and returns an [`EvalReport`].
+- **`evaluate`** — runs a set of single-turn metrics over a set of test cases
+  concurrently (bounded by a semaphore) and returns an [`EvalReport`].
+- **`evaluate_conversational`** — the multi-turn analogue: runs
+  [`ConversationalMetric`]s over [`ConversationalTestCase`]s, grouped by the
+  first turn's input.
 - **`assert_test`** — runs metrics over a single test case and returns an error
   if any metric fails (the plain-library analogue of deepeval's `assert_test`).
 - **`EvalReport`** / **`CaseReport`** — serializable results with pass/fail/
@@ -188,6 +237,7 @@ cargo run --example llm_judge_metrics        # answer relevancy, faithfulness, h
 cargo run --example geval                    # GEval with custom criteria
 cargo run --example evaluate_run             # combine metrics over multiple test cases
 cargo run --example ragas                     # RAGAS composite metric over a RAG pipeline
+cargo run --example multiturn                 # multi-turn & agentic metrics over a conversation
 ```
 
 Real-provider examples (need an API key):
@@ -199,9 +249,8 @@ ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
 
 ## Roadmap
 
-- **Phase 5** — multi-turn and agentic metrics.
-- **Phase 6** — hardening, GEval logprob scoring, the `deepeval` CLI, examples,
-  and full docs.
+- **Phase 6** — hardening, GEval logprob scoring, the `deepeval` CLI, full
+  examples/docs coverage.
 
 ## Development
 

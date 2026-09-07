@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine whether the assistant called the correct tools with the correct arguments. Each turn lists its actual tool calls and the expected tools.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating tool correctness (1.0 = all expected tools called with correct arguments, 0.0 = none matched).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

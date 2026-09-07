@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine how well the assistant retains and consistently applies information introduced earlier in the conversation (e.g. user preferences, constraints, prior facts).
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating knowledge retention across turns (1.0 = fully consistent, 0.0 = contradictory).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

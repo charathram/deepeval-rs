@@ -133,6 +133,55 @@ let pattern = PatternMatchMetric::builder()
 A metric is **skipped** (not a failure) when a required field is missing — for
 example, `ExactMatchMetric` without an `expected_output` on the test case.
 
+### Multi-turn & agentic metrics
+
+These implement the [`ConversationalMetric`](crate::metrics::ConversationalMetric)
+trait and score a whole [`ConversationalTestCase`](crate::test_case::ConversationalTestCase)
+— an ordered sequence of [`Turn`](crate::test_case::Turn)s — instead of a single
+input/output pair. Each turn can carry an input, actual/expected output,
+retrieval context, expected tools, expected criteria, and feedback.
+
+Multi-turn metrics:
+
+- `ConversationCompletenessMetric` — how well the conversation covers the request.
+- `TurnRelevancyMetric` — how relevant each turn's output is to its input.
+- `TurnFaithfulnessMetric` — whether each turn's output stays grounded in its
+  retrieval context.
+- `KnowledgeRetentionMetric` — whether the agent retains information across turns.
+- `RoleAdherenceMetric` — whether the agent stays in role.
+
+Agentic metrics (also over a `ConversationalTestCase`):
+
+- `TaskCompletionMetric`, `GoalAccuracyMetric`, `StepEfficiencyMetric`,
+  `ToolCorrectnessMetric`, `ToolUseMetric`, `PlanAdherenceMetric`,
+  `PlanQualityMetric`, `ArgumentCorrectnessMetric`, `ConversationSummaryMetric`.
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::TurnFaithfulnessMetric;
+use deepeval_rs::test_case::{ConversationalTestCase, Turn};
+
+let test_case = ConversationalTestCase::builder()
+    .turn(
+        Turn::builder()
+            .input("What is the return policy?")
+            .actual_output("We offer a 30-day full refund.")
+            .retrieval_context(vec!["30 day full refund.".to_string()])
+            .build(),
+    )
+    .build();
+
+let mut metric = TurnFaithfulnessMetric::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.9, "reason": "grounded"}"#))
+    .threshold(0.7)
+    .build();
+metric.measure(&test_case).await?;
+```
+
+A conversational metric is **skipped** when no turn satisfies its required
+fields (e.g. a faithfulness-style metric needs a turn with both an actual output
+and a retrieval context).
+
 ## Run an evaluation
 
 ### `evaluate` — get a report
@@ -162,6 +211,19 @@ assert_test(&test_case, &metrics).await?;
 
 `assert_test` returns `Ok(())` when every metric passes (or has no threshold),
 and an error naming the failing metrics otherwise.
+
+### `evaluate_conversational` — multi-turn reports
+
+```rust
+use deepeval_rs::eval::evaluate_conversational;
+use deepeval_rs::test_case::ConversationalTestCase;
+
+let test_cases = vec![ConversationalTestCase::builder().build()];
+// metrics: Vec<Box<dyn ConversationalMetric>>
+let report = evaluate_conversational(&test_cases, &metrics).await;
+
+println!("passed: {}", report.passed());
+```
 
 ## Prompt templating
 
@@ -195,6 +257,7 @@ cargo run --example llm_judge_metrics        # answer relevancy, faithfulness, h
 cargo run --example geval                    # GEval with custom criteria
 cargo run --example evaluate_run             # combine metrics over multiple test cases
 cargo run --example ragas                     # RAGAS composite metric over a RAG pipeline
+cargo run --example multiturn                 # multi-turn & agentic metrics over a conversation
 ```
 
 Real-provider examples (need an API key):

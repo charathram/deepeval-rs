@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine whether the assistant successfully completed the user's task by the end of the conversation.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating task completion (1.0 = task fully completed, 0.0 = task not attempted or failed).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

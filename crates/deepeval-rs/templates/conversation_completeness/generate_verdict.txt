@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine how completely the assistant's responses resolve each user turn in a conversation.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating how completely the assistant addressed every user request (1.0 = fully complete, 0.0 = nothing addressed).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.
