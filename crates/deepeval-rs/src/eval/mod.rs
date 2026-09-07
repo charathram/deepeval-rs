@@ -99,7 +99,7 @@ async fn measure_one(metric: &mut Box<dyn Metric>, test_case: &LLMTestCase) -> M
             cost: None,
             input_tokens: 0,
             output_tokens: 0,
-            skipped: false,
+            skipped: metric.skipped(),
             error: Some(e.to_string()),
         },
     }
