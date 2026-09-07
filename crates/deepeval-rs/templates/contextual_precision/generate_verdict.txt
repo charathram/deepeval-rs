@@ -1,0 +1,16 @@
+You are an expert evaluator. Determine how precisely the retrieval context ranks the relevant information needed to answer the input. A high-precision context places the most relevant information early.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+Retrieval Context (in order):
+{{ retrieval_context }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating contextual precision (1.0 = the most relevant information is ranked first, 0.0 = relevant information is ranked last or absent).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

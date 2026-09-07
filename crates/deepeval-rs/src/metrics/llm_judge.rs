@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use minijinja::Value;
 use serde::Deserialize;
 
@@ -63,6 +64,20 @@ impl std::fmt::Debug for Provider {
         f.debug_tuple("Provider")
             .field(&self.0.model_name())
             .finish()
+    }
+}
+
+#[async_trait]
+impl LlmProvider for Provider {
+    fn model_name(&self) -> &str {
+        self.0.model_name()
+    }
+
+    async fn complete(
+        &self,
+        request: LlmRequest,
+    ) -> Result<crate::llm::LlmResponse, crate::error::LlmError> {
+        self.0.complete(request).await
     }
 }
 

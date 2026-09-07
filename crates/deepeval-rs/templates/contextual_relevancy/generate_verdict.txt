@@ -1,0 +1,16 @@
+You are an expert evaluator. Determine how relevant the retrieval context is to the input.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+Retrieval Context:
+{{ retrieval_context }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating contextual relevancy (1.0 = the retrieval context is fully relevant to the input, 0.0 = it is not relevant at all).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.
