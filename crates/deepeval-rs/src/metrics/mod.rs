@@ -112,7 +112,11 @@ macro_rules! impl_metric {
             }
 
             fn reason(&self) -> Option<&str> {
-                self.state.reason.as_deref()
+                if self.state.config.include_reason {
+                    self.state.reason.as_deref()
+                } else {
+                    None
+                }
             }
 
             fn skipped(&self) -> bool {

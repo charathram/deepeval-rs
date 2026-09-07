@@ -156,6 +156,7 @@ mod tests {
             .provider(provider)
             .criteria("The answer must be factually correct.")
             .threshold(0.7)
+            .include_reason(true)
             .build();
 
         metric.measure(&case()).await.unwrap();
@@ -172,10 +173,23 @@ mod tests {
             .criteria("The answer must be factually correct.")
             .threshold(0.7)
             .build();
-
         metric.measure(&case()).await.unwrap();
         assert_eq!(metric.score(), Some(0.2));
         assert_eq!(metric.is_successful(), Some(false));
+    }
+
+    #[tokio::test]
+    async fn suppresses_reason_when_include_reason_is_false() {
+        let provider = MockLlmProvider::text(r#"{"score": 0.9, "reason": "correct"}"#);
+        let mut metric = GEval::builder()
+            .provider(provider)
+            .criteria("The answer must be factually correct.")
+            .threshold(0.7)
+            .build();
+
+        metric.measure(&case()).await.unwrap();
+        assert_eq!(metric.score(), Some(0.9));
+        assert_eq!(metric.reason(), None);
     }
 
     #[tokio::test]
