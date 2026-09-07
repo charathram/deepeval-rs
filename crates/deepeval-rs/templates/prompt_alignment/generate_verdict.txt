@@ -1,0 +1,18 @@
+You are an expert evaluator. Determine how well the actual output aligns with the prompt and any stated criteria.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+{% if expected_criteria %}
+Expected Criteria:
+{{ expected_criteria }}
+{% endif %}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating alignment (1.0 = fully aligned, 0.0 = not aligned at all).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

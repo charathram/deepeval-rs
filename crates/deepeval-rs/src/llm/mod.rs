@@ -32,17 +32,16 @@ pub trait LlmProvider: Send + Sync {
     /// Generate a completion and parse the response as structured JSON.
     ///
     /// The default implementation requests plain text and parses the first
-    /// JSON object in the response. Providers that support native structured
+    /// JSON value in the response. Providers that support native structured
     /// output may override this to use rig's `output_schema`.
-    async fn complete_structured<T>(&self, request: LlmRequest) -> Result<T, LlmError>
-    where
-        T: serde::de::DeserializeOwned + Send,
-    {
+    async fn complete_structured(
+        &self,
+        request: LlmRequest,
+    ) -> Result<serde_json::Value, LlmError> {
         let response = self.complete(request).await?;
         let json = extract_json(&response.content)
             .ok_or_else(|| LlmError::MissingStructuredOutput(response.content.clone()))?;
-        serde_json::from_value(json)
-            .map_err(|e| LlmError::Parse(format!("failed to parse structured output: {e}")))
+        Ok(json)
     }
 }
 

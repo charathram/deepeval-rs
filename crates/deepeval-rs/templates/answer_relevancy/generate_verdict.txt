@@ -1,0 +1,13 @@
+You are an expert evaluator. Determine how relevant the actual output is to the input.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating relevance (1.0 = fully relevant, 0.0 = not relevant at all).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

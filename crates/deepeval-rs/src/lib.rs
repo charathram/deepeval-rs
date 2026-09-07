@@ -13,11 +13,15 @@
 //! ```ignore
 //! use deepeval_rs::test_case::LLMTestCase;
 //! use deepeval_rs::metrics::AnswerRelevancyMetric;
+//! use deepeval_rs::llm::MockLlmProvider;
 //! use deepeval_rs::eval::assert_test;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let metric = AnswerRelevancyMetric::builder().threshold(0.7).build();
+//!     let metric = AnswerRelevancyMetric::builder()
+//!         .provider(MockLlmProvider::text(r#"{"score": 0.9}"#))
+//!         .threshold(0.7)
+//!         .build();
 //!     let test_case = LLMTestCase::builder()
 //!         .input("What if these shoes don't fit?")
 //!         .actual_output("We offer a 30-day full refund at no extra costs.")

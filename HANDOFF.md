@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-06 · After Phase 2 (PR #5 merged)
+> Last updated: 2026-09-06 · After Phase 3 (PR #6)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -19,8 +19,8 @@ faithfulness, hallucination, etc.).
 | 0 | Workspace scaffold, error types, CI | ✅ merged |
 | 1 | Core test-case types + rig-backed LLM layer | ✅ merged |
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
-| 3 | Core LLM-judge + deterministic metrics | 🔜 next |
-| 4 | RAG metrics | ⏳ planned |
+| 3 | Core LLM-judge + deterministic metrics | ✅ merged |
+| 4 | RAG metrics | 🔜 next |
 | 5 | Multi-turn + agentic metrics | ⏳ planned |
 | 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
 
@@ -36,7 +36,7 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   workflows/ci.yml                   # fmt + clippy + test
 ```
 
-## What's implemented (as of Phase 2)
+## What's implemented (as of Phase 3)
 
 ### `test_case` module (`crates/deepeval-rs/src/test_case/`)
 - `LLMTestCase` + builder — single-turn test case (input, actual_output,
@@ -56,10 +56,23 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 
 ### `metrics` module (`crates/deepeval-rs/src/metrics/`)
 - `Metric` trait — object-safe (`async_trait` + `Send + Sync`). Methods: `name`,
-  `threshold`, `measure` (async), `is_successful`, `score`, `reason`,
+  `threshold`, `measure` (async), `is_successful`, `score`, `reason`, `skipped`,
   `clone_box`. `Box<dyn Metric>` is `Clone` via `clone_box`.
 - `MetricConfig` — threshold, include_reason, strict_mode, async_mode, verbose_mode.
 - `MetricResult` — serializable measurement output.
+- `MetricState` — shared in-memory measurement state (config + score/reason/skipped);
+  cloning resets measurement fields so a cloned metric starts fresh.
+- `impl_metric!` macro — generates the boilerplate `Metric` impl for a metric
+  type exposing a `state: MetricState` field and a `measure_impl` method.
+- `llm_judge` module — shared LLM-judge flow: validate required fields → render
+  prompt → `provider.complete_structured` → parse `{score, reason}` verdict →
+  clamp score to 0–1.
+- **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
+  `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
+- **Deterministic metrics (no LLM):** `ExactMatchMetric`, `PatternMatchMetric`
+  (`regex`), `JsonCorrectnessMetric`.
+- Prompt templates live in `crates/deepeval-rs/templates/` (e.g.
+  `geval/generate_verdict.txt`).
 
 ### `template` module (`crates/deepeval-rs/src/template/`)
 - `TemplateRegistry` — registers/renders Jinja-compatible templates keyed by
@@ -122,21 +135,21 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   not yet written — `RigProvider` already supports any rig model, so wiring a
   specific provider is a thin constructor.
 
-## What's next (Phase 3)
+## What's next (Phase 4)
 
-Core LLM-judge + deterministic metrics:
+RAG metrics (all LLM-judge; reuse the Phase 3 `llm_judge` flow):
 
-- **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
-  `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
-- **Deterministic metrics (no LLM):** `ExactMatchMetric`, `PatternMatchMetric`
-  (`regex`), `JsonCorrectnessMetric`.
+- `ContextualPrecisionMetric`, `ContextualRecallMetric`,
+  `ContextualRelevancyMetric` (all LLM-judge; `ContextualRecall` extracts
+  ground-truth facts from `expected_output`).
+- `RagasMetric` = average of answer relevancy, faithfulness, contextual
+  precision, contextual recall (compose existing metrics — reuse Phase 3 impls).
 
-Each metric follows this pattern: resolve fields → validate required (else
-`skipped=true`) → render prompt(s) via `TemplateRegistry` → `provider.complete`
-→ parse JSON verdicts → compute `score` (0–1) → optional `reason` → `is_successful`.
-
-Each metric needs unit tests using `MockLlmProvider` with canned JSON responses,
-plus a pass case and a fail case (below threshold).
+Each metric follows the Phase 3 pattern: resolve fields → validate required
+(else `skipped=true`) → render prompt(s) via `TemplateRegistry` →
+`provider.complete` → parse JSON verdicts → compute `score` (0–1) → optional
+`reason` → `is_successful`. Each needs unit tests using `MockLlmProvider` with
+canned JSON responses, plus a pass case and a fail case (below threshold).
 
 ## Verification commands
 

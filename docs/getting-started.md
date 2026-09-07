@@ -55,6 +55,59 @@ let response = provider.complete(request).await?;
 > **Note:** concrete provider constructors (e.g. `OpenAIProvider::from_env()`)
 > land in a later phase. For now, wrap a rig model with `RigProvider::new`.
 
+## Build a metric
+
+Metrics come in two flavors: **LLM-judge** metrics (which need a provider) and
+**deterministic** metrics (which don't). Both are built with a builder and
+scored 0–1 against a `threshold`.
+
+### LLM-judge metrics
+
+`GEval`, `AnswerRelevancyMetric`, `FaithfulnessMetric`, `HallucinationMetric`,
+and `PromptAlignmentMetric` ask an LLM to judge the output. They need a
+provider and a threshold:
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::AnswerRelevancyMetric;
+
+let metric = AnswerRelevancyMetric::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.9}"#))
+    .threshold(0.7)
+    .build();
+```
+
+`GEval` additionally requires `criteria` describing what to evaluate:
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::GEval;
+
+let metric = GEval::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.8}"#))
+    .criteria("The answer is concise and accurate.")
+    .threshold(0.7)
+    .build();
+```
+
+### Deterministic metrics
+
+`ExactMatchMetric`, `PatternMatchMetric`, and `JsonCorrectnessMetric` need no
+provider:
+
+```rust
+use deepeval_rs::metrics::{ExactMatchMetric, PatternMatchMetric};
+
+let exact = ExactMatchMetric::builder().threshold(0.5).build();
+let pattern = PatternMatchMetric::builder()
+    .pattern(r"^\d{3}-\d{4}$")
+    .threshold(0.5)
+    .build();
+```
+
+A metric is **skipped** (not a failure) when a required field is missing — for
+example, `ExactMatchMetric` without an `expected_output` on the test case.
+
 ## Run an evaluation
 
 ### `evaluate` — get a report
