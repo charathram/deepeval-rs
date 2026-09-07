@@ -1,0 +1,107 @@
+# Getting Started
+
+This guide shows how to use the `deepeval-rs` library to evaluate LLM
+applications. It assumes you have a Rust project with `tokio` available.
+
+## Add the dependency
+
+```toml
+[dependencies]
+deepeval-rs = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+## Core concepts
+
+- **Test case** — the input and expected output of a single LLM application
+  turn ([`LLMTestCase`](crate::test_case::LLMTestCase)), or a multi-turn
+  conversation ([`ConversationalTestCase`](crate::test_case::ConversationalTestCase)).
+- **Metric** — a single evaluation, e.g. answer relevancy or faithfulness.
+  Metrics implement the [`Metric`](crate::metrics::Metric) trait.
+- **Evaluation** — running one or more metrics over one or more test cases,
+  either via [`evaluate`](crate::eval::evaluate) (returns a report) or
+  [`assert_test`](crate::eval::assert_test) (fails if any metric fails).
+
+## Build a test case
+
+```rust
+use deepeval_rs::test_case::LLMTestCase;
+
+let test_case = LLMTestCase::builder()
+    .input("What if these shoes don't fit?")
+    .actual_output("We offer a 30-day full refund at no extra costs.")
+    .expected_output("We offer a 30-day full refund at no extra costs.")
+    .retrieval_context(vec![
+        "All customers are eligible for a 30 day full refund at no extra costs.".to_string(),
+    ])
+    .build();
+```
+
+## Configure an LLM provider
+
+Metrics that use an LLM-as-a-judge need a provider. The library ships a
+[`MockLlmProvider`](crate::llm::MockLlmProvider) for tests and a
+[`RigProvider`](crate::llm::RigProvider) that wraps any
+[rig](https://github.com/0xplaygrounds/rig) completion model.
+
+```rust
+use deepeval_rs::llm::{ChatMessage, LlmProvider, LlmRequest, MockLlmProvider};
+
+let provider = MockLlmProvider::text("hello");
+let request = LlmRequest::new(vec![ChatMessage::user("Say hi.")]);
+let response = provider.complete(request).await?;
+```
+
+> **Note:** concrete provider constructors (e.g. `OpenAIProvider::from_env()`)
+> land in a later phase. For now, wrap a rig model with `RigProvider::new`.
+
+## Run an evaluation
+
+### `evaluate` — get a report
+
+```rust
+use deepeval_rs::eval::evaluate;
+use deepeval_rs::test_case::LLMTestCase;
+
+let test_cases = vec![LLMTestCase::builder().input("hi").build()];
+// metrics: Vec<Box<dyn Metric>>
+let report = evaluate(&test_cases, &metrics).await;
+
+println!("passed: {}", report.passed());
+println!("failed: {}", report.failed());
+```
+
+### `assert_test` — fail fast
+
+```rust
+use deepeval_rs::eval::assert_test;
+use deepeval_rs::test_case::LLMTestCase;
+
+let test_case = LLMTestCase::builder().input("hi").build();
+// metrics: Vec<Box<dyn Metric>>
+assert_test(&test_case, &metrics).await?;
+```
+
+`assert_test` returns `Ok(())` when every metric passes (or has no threshold),
+and an error naming the failing metrics otherwise.
+
+## Prompt templating
+
+Metrics render prompts from Jinja-compatible templates. You can build your own
+registry with [`TemplateRegistry`](crate::template::TemplateRegistry).
+
+```rust
+use deepeval_rs::template::TemplateRegistry;
+use minijinja::Value;
+use std::collections::HashMap;
+
+let mut registry = TemplateRegistry::new();
+registry.register("MyMetric", "greet", "Hello, {{ name }}!");
+let ctx = HashMap::from([("name".to_string(), Value::from("world"))]);
+let out = registry.resolve("MyMetric", "greet", &ctx)?;
+```
+
+## Next steps
+
+- See the [CLI guide](cli.md) for the `deepeval` command-line tool.
+- See the [README](../README.md) for the project status and roadmap.
