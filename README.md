@@ -25,8 +25,8 @@ pull request.
 | 1 | Core test-case types + rig-backed LLM layer | ✅ merged |
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
-| 4 | RAG metrics | 🔜 next |
-| 5 | Multi-turn + agentic metrics | ⏳ planned |
+| 4 | RAG metrics | ✅ merged |
+| 5 | Multi-turn + agentic metrics | 🔜 next |
 | 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
 
 ## Workspace layout
@@ -104,6 +104,17 @@ let response = provider.complete(request).await?;
 - **`PromptAlignmentMetric`** — whether the actual output follows the expected
   criteria.
 
+**RAG metrics** (LLM-judge; need a provider and a retrieval context):
+
+- **`ContextualPrecisionMetric`** — whether the retrieval context ranks the
+  relevant chunks above the irrelevant ones.
+- **`ContextualRecallMetric`** — whether the retrieval context contains the
+  information needed to answer the input.
+- **`ContextualRelevancyMetric`** — whether the retrieval context is relevant to
+  the input.
+- **`RagasMetric`** — a composite score averaging answer relevancy, faithfulness,
+  contextual precision, and contextual recall.
+
 **Deterministic metrics** (no LLM required):
 
 - **`ExactMatchMetric`** — 1.0 when actual output exactly equals expected output.
@@ -176,6 +187,7 @@ cargo run --example deterministic_metrics   # exact match, pattern match, JSON c
 cargo run --example llm_judge_metrics        # answer relevancy, faithfulness, hallucination, prompt alignment
 cargo run --example geval                    # GEval with custom criteria
 cargo run --example evaluate_run             # combine metrics over multiple test cases
+cargo run --example ragas                     # RAGAS composite metric over a RAG pipeline
 ```
 
 Real-provider examples (need an API key):
@@ -187,7 +199,6 @@ ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
 
 ## Roadmap
 
-- **Phase 4** — RAG metrics (contextual precision/recall/relevancy, RAGAS).
 - **Phase 5** — multi-turn and agentic metrics.
 - **Phase 6** — hardening, GEval logprob scoring, the `deepeval` CLI, examples,
   and full docs.

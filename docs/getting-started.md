@@ -64,8 +64,9 @@ scored 0–1 against a `threshold`.
 ### LLM-judge metrics
 
 `GEval`, `AnswerRelevancyMetric`, `FaithfulnessMetric`, `HallucinationMetric`,
-and `PromptAlignmentMetric` ask an LLM to judge the output. They need a
-provider and a threshold:
+`PromptAlignmentMetric`, and the RAG metrics (`ContextualPrecisionMetric`,
+`ContextualRecallMetric`, `ContextualRelevancyMetric`, `RagasMetric`) ask an LLM
+to judge the output. They need a provider and a threshold:
 
 ```rust
 use deepeval_rs::llm::MockLlmProvider;
@@ -89,6 +90,30 @@ let metric = GEval::builder()
     .threshold(0.7)
     .build();
 ```
+
+### RAG metrics
+
+The RAG metrics judge a retrieval pipeline. They need a provider, a threshold,
+and a test case with a `retrieval_context` (and, for `ContextualRecallMetric`,
+an `expected_output`). `RagasMetric` composes four metrics into one score:
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::RagasMetric;
+
+let metric = RagasMetric::builder()
+    .provider(MockLlmProvider::responses([
+        r#"{"score": 0.9}"#,
+        r#"{"score": 0.8}"#,
+        r#"{"score": 0.7}"#,
+        r#"{"score": 0.6}"#,
+    ]))
+    .threshold(0.5)
+    .build();
+```
+
+> **Note:** `RagasMetric` measures four sub-metrics, so its provider must supply
+> one response per sub-metric (see the `ragas` example).
 
 ### Deterministic metrics
 
@@ -169,6 +194,7 @@ cargo run --example deterministic_metrics   # exact match, pattern match, JSON c
 cargo run --example llm_judge_metrics        # answer relevancy, faithfulness, hallucination, prompt alignment
 cargo run --example geval                    # GEval with custom criteria
 cargo run --example evaluate_run             # combine metrics over multiple test cases
+cargo run --example ragas                     # RAGAS composite metric over a RAG pipeline
 ```
 
 Real-provider examples (need an API key):

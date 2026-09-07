@@ -7,6 +7,9 @@ mod base;
 mod llm_judge;
 
 mod answer_relevancy;
+mod contextual_precision;
+mod contextual_recall;
+mod contextual_relevancy;
 mod exact_match;
 mod faithfulness;
 mod geval;
@@ -14,10 +17,14 @@ mod hallucination;
 mod json_correctness;
 mod pattern_match;
 mod prompt_alignment;
+mod ragas;
 
 pub use answer_relevancy::AnswerRelevancyMetric;
 pub(crate) use base::MetricState;
 pub use base::{MetricConfig, MetricResult};
+pub use contextual_precision::ContextualPrecisionMetric;
+pub use contextual_recall::ContextualRecallMetric;
+pub use contextual_relevancy::ContextualRelevancyMetric;
 pub use exact_match::ExactMatchMetric;
 pub use faithfulness::FaithfulnessMetric;
 pub use geval::GEval;
@@ -25,6 +32,7 @@ pub use hallucination::HallucinationMetric;
 pub use json_correctness::JsonCorrectnessMetric;
 pub use pattern_match::PatternMatchMetric;
 pub use prompt_alignment::PromptAlignmentMetric;
+pub use ragas::RagasMetric;
 
 use async_trait::async_trait;
 

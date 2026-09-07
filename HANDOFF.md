@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-06 · After Phase 3 (PR #6)
+> Last updated: 2026-09-06 · After Phase 4 (PR #9)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -20,8 +20,8 @@ faithfulness, hallucination, etc.).
 | 1 | Core test-case types + rig-backed LLM layer | ✅ merged |
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
-| 4 | RAG metrics | 🔜 next |
-| 5 | Multi-turn + agentic metrics | ⏳ planned |
+| 4 | RAG metrics | ✅ merged |
+| 5 | Multi-turn + agentic metrics | 🔜 next |
 | 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
 
 ## Repository layout
@@ -36,7 +36,7 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   workflows/ci.yml                   # fmt + clippy + test
 ```
 
-## What's implemented (as of Phase 3)
+## What's implemented (as of Phase 4)
 
 ### `test_case` module (`crates/deepeval-rs/src/test_case/`)
 - `LLMTestCase` + builder — single-turn test case (input, actual_output,
@@ -69,10 +69,18 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   clamp score to 0–1.
 - **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
   `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
+- **RAG metrics (LLM-judge):** `ContextualPrecisionMetric`,
+  `ContextualRecallMetric`, `ContextualRelevancyMetric`, and the composite
+  `RagasMetric` (averages answer relevancy, faithfulness, contextual precision,
+  contextual recall).
 - **Deterministic metrics (no LLM):** `ExactMatchMetric`, `PatternMatchMetric`
   (`regex`), `JsonCorrectnessMetric`.
 - Prompt templates live in `crates/deepeval-rs/templates/` (e.g.
-  `geval/generate_verdict.txt`).
+  `geval/generate_verdict.txt`, `contextual_precision/generate_verdict.txt`).
+- `Provider` (in `llm_judge`) — a `Debug`/`Clone` wrapper around
+  `Arc<dyn LlmProvider>` that also implements `LlmProvider` (delegating to the
+  inner provider), so it can be passed to sub-metric builders (used by
+  `RagasMetric`).
 
 ### `template` module (`crates/deepeval-rs/src/template/`)
 - `TemplateRegistry` — registers/renders Jinja-compatible templates keyed by
@@ -135,21 +143,11 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   not yet written — `RigProvider` already supports any rig model, so wiring a
   specific provider is a thin constructor.
 
-## What's next (Phase 4)
+## What's next (Phase 5)
 
-RAG metrics (all LLM-judge; reuse the Phase 3 `llm_judge` flow):
-
-- `ContextualPrecisionMetric`, `ContextualRecallMetric`,
-  `ContextualRelevancyMetric` (all LLM-judge; `ContextualRecall` extracts
-  ground-truth facts from `expected_output`).
-- `RagasMetric` = average of answer relevancy, faithfulness, contextual
-  precision, contextual recall (compose existing metrics — reuse Phase 3 impls).
-
-Each metric follows the Phase 3 pattern: resolve fields → validate required
-(else `skipped=true`) → render prompt(s) via `TemplateRegistry` →
-`provider.complete` → parse JSON verdicts → compute `score` (0–1) → optional
-`reason` → `is_successful`. Each needs unit tests using `MockLlmProvider` with
-canned JSON responses, plus a pass case and a fail case (below threshold).
+Multi-turn and agentic metrics. The multi-turn data model
+(`ConversationalTestCase`, `Turn`, `MultiTurnParams`) already exists in
+`test_case`; Phase 5 wires it up to metrics and `evaluate`.
 
 ## Verification commands
 
