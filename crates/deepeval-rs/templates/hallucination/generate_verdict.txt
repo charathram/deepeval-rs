@@ -1,0 +1,16 @@
+You are an expert evaluator. Determine whether the actual output is grounded in the retrieval context or contains hallucinations (claims that contradict or are unsupported by the context).
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+Retrieval Context:
+{{ retrieval_context }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 where 1.0 means the output is fully grounded (no hallucination) and 0.0 means the output is entirely hallucinated.
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

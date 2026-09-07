@@ -24,8 +24,8 @@ pull request.
 | 0 | Workspace scaffold, error types, CI | ✅ merged |
 | 1 | Core test-case types + rig-backed LLM layer | ✅ merged |
 | 2 | Core engine: `Metric` trait, templating, `evaluate`/`assert_test` | ✅ merged |
-| 3 | Core LLM-judge + deterministic metrics | 🔜 next |
-| 4 | RAG metrics | ⏳ planned |
+| 3 | Core LLM-judge + deterministic metrics | ✅ merged |
+| 4 | RAG metrics | 🔜 next |
 | 5 | Multi-turn + agentic metrics | ⏳ planned |
 | 6 | Hardening, GEval logprobs, CLI, examples, docs | ⏳ planned |
 
@@ -83,14 +83,53 @@ let request = LlmRequest::new(vec![ChatMessage::user("Say hi.")]);
 let response = provider.complete(request).await?;
 ```
 
-### `metrics` — the `Metric` trait
+### `metrics` — the `Metric` trait and the concrete metric set
 
 - **`Metric`** — the object-safe trait all metrics implement. Methods: `name`,
   `threshold`, `measure` (async, records score/reason/success on `self`),
-  `is_successful`, `score`, `reason`, `clone_box`.
+  `is_successful`, `score`, `reason`, `skipped`, `clone_box`.
 - **`MetricConfig`** — shared configuration (threshold, include_reason,
   strict_mode, async_mode, verbose_mode).
 - **`MetricResult`** — the serializable output of a single measurement.
+
+**LLM-judge metrics** (need a provider; score 0–1 from an LLM verdict):
+
+- **`GEval`** — scores an output against custom `criteria` (simplified
+  chain-of-thought; logprob scoring lands in Phase 6).
+- **`AnswerRelevancyMetric`** — how relevant the actual output is to the input.
+- **`FaithfulnessMetric`** — whether the actual output stays grounded in the
+  retrieval context.
+- **`HallucinationMetric`** — whether the actual output is supported by the
+  context.
+- **`PromptAlignmentMetric`** — whether the actual output follows the expected
+  criteria.
+
+**Deterministic metrics** (no LLM required):
+
+- **`ExactMatchMetric`** — 1.0 when actual output exactly equals expected output.
+- **`PatternMatchMetric`** — 1.0 when actual output matches a regex `pattern`.
+- **`JsonCorrectnessMetric`** — 1.0 when actual output parses as valid JSON.
+
+```rust
+use deepeval_rs::llm::MockLlmProvider;
+use deepeval_rs::metrics::{AnswerRelevancyMetric, ExactMatchMetric, GEval};
+
+// LLM-judge metric: needs a provider.
+let relevancy = AnswerRelevancyMetric::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.9}"#))
+    .threshold(0.7)
+    .build();
+
+// Deterministic metric: no provider.
+let exact = ExactMatchMetric::builder().threshold(0.5).build();
+
+// GEval: needs criteria too.
+let geval = GEval::builder()
+    .provider(MockLlmProvider::text(r#"{"score": 0.8}"#))
+    .criteria("The answer is concise and accurate.")
+    .threshold(0.7)
+    .build();
+```
 
 ### `template` — Jinja-compatible prompt templating
 
@@ -129,9 +168,6 @@ assert_test(&test_case, &metrics).await?;
 
 ## Roadmap
 
-- **Phase 3** — core LLM-judge metrics (G-Eval, answer relevancy, faithfulness,
-  hallucination, prompt alignment) and deterministic metrics (exact match,
-  pattern match, JSON correctness).
 - **Phase 4** — RAG metrics (contextual precision/recall/relevancy, RAGAS).
 - **Phase 5** — multi-turn and agentic metrics.
 - **Phase 6** — hardening, GEval logprob scoring, the `deepeval` CLI, examples,

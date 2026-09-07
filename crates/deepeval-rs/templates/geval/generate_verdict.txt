@@ -1,0 +1,21 @@
+You are an expert evaluator. Evaluate the actual output against the given criteria.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+{% if evaluation_steps %}
+Evaluation Steps:
+{{ evaluation_steps }}
+{% endif %}
+
+Criteria:
+{{ criteria }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating how well the actual output satisfies the criteria (1.0 = fully satisfies, 0.0 = does not satisfy at all).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

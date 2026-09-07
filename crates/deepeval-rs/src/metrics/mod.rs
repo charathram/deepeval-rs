@@ -1,11 +1,30 @@
 //! Evaluation metrics for deepeval-rs.
 //!
 //! This module defines the [`Metric`] trait that all metrics implement, plus
-//! shared configuration and result types. Concrete metrics land in Phases 3-5.
+//! shared configuration and result types, and the concrete metric set.
 
 mod base;
+mod llm_judge;
 
+mod answer_relevancy;
+mod exact_match;
+mod faithfulness;
+mod geval;
+mod hallucination;
+mod json_correctness;
+mod pattern_match;
+mod prompt_alignment;
+
+pub use answer_relevancy::AnswerRelevancyMetric;
+pub(crate) use base::MetricState;
 pub use base::{MetricConfig, MetricResult};
+pub use exact_match::ExactMatchMetric;
+pub use faithfulness::FaithfulnessMetric;
+pub use geval::GEval;
+pub use hallucination::HallucinationMetric;
+pub use json_correctness::JsonCorrectnessMetric;
+pub use pattern_match::PatternMatchMetric;
+pub use prompt_alignment::PromptAlignmentMetric;
 
 use async_trait::async_trait;
 
@@ -29,8 +48,8 @@ pub trait Metric: Send + Sync {
     /// Measure the given test case, recording the result on `self`.
     ///
     /// Implementations set `score`, `reason`, and `success` on `self`. They
-    /// return `Err` only on a hard failure (e.g. a missing required field or
-    /// an LLM error); a below-threshold score is not an error.
+    /// return `Err` only on a hard failure (e.g. an LLM error); a
+    /// below-threshold score is not an error.
     async fn measure(
         &mut self,
         test_case: &crate::test_case::LLMTestCase,
@@ -52,6 +71,13 @@ pub trait Metric: Send + Sync {
     /// The recorded reason/explanation, if any.
     fn reason(&self) -> Option<&str>;
 
+    /// Whether this metric was skipped (e.g. a required field was missing).
+    ///
+    /// Skipped metrics have no score and do not count as failures.
+    fn skipped(&self) -> bool {
+        false
+    }
+
     /// Clone this metric as a boxed trait object.
     fn clone_box(&self) -> Box<dyn Metric>;
 }
@@ -61,3 +87,50 @@ impl Clone for Box<dyn Metric> {
         self.clone_box()
     }
 }
+
+/// Generate the boilerplate [`Metric`] implementation for a metric type.
+///
+/// The target type must expose:
+/// - a `state: MetricState` field (for `threshold`, `score`, `reason`, `skipped`),
+/// - a `Clone` implementation (for `clone_box`),
+/// - an `async fn measure_impl(&mut self, &LLMTestCase) -> Result<(), MetricError>`
+///   method (for `measure`).
+macro_rules! impl_metric {
+    ($ty:ty, $name:expr) => {
+        #[async_trait::async_trait]
+        impl $crate::metrics::Metric for $ty {
+            fn name(&self) -> &str {
+                $name
+            }
+
+            fn threshold(&self) -> Option<f32> {
+                self.state.config.threshold
+            }
+
+            fn score(&self) -> Option<f32> {
+                self.state.score
+            }
+
+            fn reason(&self) -> Option<&str> {
+                self.state.reason.as_deref()
+            }
+
+            fn skipped(&self) -> bool {
+                self.state.skipped
+            }
+
+            fn clone_box(&self) -> Box<dyn $crate::metrics::Metric> {
+                Box::new(self.clone())
+            }
+
+            async fn measure(
+                &mut self,
+                test_case: &$crate::test_case::LLMTestCase,
+            ) -> Result<(), $crate::error::MetricError> {
+                self.measure_impl(test_case).await
+            }
+        }
+    };
+}
+
+pub(crate) use impl_metric;

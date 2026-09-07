@@ -105,3 +105,44 @@ impl MetricResult {
         }
     }
 }
+
+/// Shared in-memory measurement state for a metric.
+///
+/// Holds the metric's configuration plus the score, reason, and skip flag that
+/// [`Metric::measure`](super::Metric::measure) records on `self`. Cloning a
+/// [`MetricState`] resets the measurement fields so a cloned metric starts
+/// fresh (mirroring deepeval's per-`(test_case, metric)` cloning).
+#[derive(Debug)]
+pub(crate) struct MetricState {
+    /// The metric configuration.
+    pub config: MetricConfig,
+    /// The recorded score, if any.
+    pub score: Option<f32>,
+    /// The recorded reason, if any.
+    pub reason: Option<String>,
+    /// Whether the metric was skipped (a required field was missing).
+    pub skipped: bool,
+}
+
+impl MetricState {
+    /// Create fresh state for the given configuration.
+    pub fn new(config: MetricConfig) -> Self {
+        Self {
+            config,
+            score: None,
+            reason: None,
+            skipped: false,
+        }
+    }
+
+    /// A fresh copy with the same configuration but cleared measurement state.
+    pub fn reset(&self) -> Self {
+        Self::new(self.config.clone())
+    }
+}
+
+impl Clone for MetricState {
+    fn clone(&self) -> Self {
+        self.reset()
+    }
+}

@@ -1,0 +1,16 @@
+You are an expert evaluator. Determine whether the actual output is faithful to the retrieval context. An output is faithful when every claim it makes is supported by the retrieval context.
+
+Input:
+{{ input }}
+
+Actual Output:
+{{ actual_output }}
+
+Retrieval Context:
+{{ retrieval_context }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating faithfulness (1.0 = fully faithful, 0.0 = contains unsupported claims).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.
