@@ -178,6 +178,13 @@ cargo run --example geval                    # GEval with custom criteria
 cargo run --example evaluate_run             # combine metrics over multiple test cases
 ```
 
+Real-provider examples (need an API key):
+
+```bash
+OPENAI_API_KEY=... cargo run --example real_provider_openai
+ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
+```
+
 ## Roadmap
 
 - **Phase 4** — RAG metrics (contextual precision/recall/relevancy, RAGAS).

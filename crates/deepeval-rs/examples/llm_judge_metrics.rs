@@ -4,8 +4,9 @@
 //!
 //! These metrics ask an LLM to judge the output and return a 0-1 score. This
 //! example uses [`MockLlmProvider`] so it runs with no API key. To use a real
-//! model, swap the mock for a [`RigProvider`] wrapping a rig completion model
-//! (see the crate docs for provider wiring).
+//! model, swap the mock for a [`RigProvider`] wrapping a rig completion model —
+//! see `real_provider_openai` and `real_provider_anthropic` for complete
+//! wiring examples.
 
 use deepeval_rs::llm::MockLlmProvider;
 use deepeval_rs::metrics::{
