@@ -158,3 +158,15 @@ let out = registry.resolve("MyMetric", "greet", &ctx)?;
 
 - See the [CLI guide](cli.md) for the `deepeval` command-line tool.
 - See the [README](../README.md) for the project status and roadmap.
+
+## Examples
+
+Runnable demos live in `crates/deepeval-rs/examples/`. They run keyless with
+[`MockLlmProvider`](crate::llm::MockLlmProvider):
+
+```bash
+cargo run --example deterministic_metrics   # exact match, pattern match, JSON correctness
+cargo run --example llm_judge_metrics        # answer relevancy, faithfulness, hallucination, prompt alignment
+cargo run --example geval                    # GEval with custom criteria
+cargo run --example evaluate_run             # combine metrics over multiple test cases
+```
