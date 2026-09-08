@@ -56,9 +56,14 @@ impl GEval {
         .await?
         {
             MeasureOutcome::Skipped => self.state.skipped = true,
-            MeasureOutcome::Scored { score, reason } => {
+            MeasureOutcome::Scored {
+                score,
+                reason,
+                usage,
+            } => {
                 self.state.score = Some(score);
                 self.state.reason = reason;
+                self.state.accrue_usage(&usage);
             }
         }
         Ok(())

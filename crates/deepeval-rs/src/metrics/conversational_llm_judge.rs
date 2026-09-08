@@ -106,15 +106,20 @@ fn dialog_turns(turns: &[Turn]) -> String {
 }
 
 /// Ask the LLM for a score verdict given a rendered prompt.
+///
+/// Returns the parsed verdict plus the underlying response (for usage/cost
+/// accounting).
 pub(crate) async fn score_via_llm(
     provider: &dyn LlmProvider,
     prompt: String,
-) -> Result<Verdict, MetricError> {
+) -> Result<(Verdict, crate::llm::LlmResponse), MetricError> {
     let request = LlmRequest::new(vec![ChatMessage::user(prompt)]);
-    let value = provider.complete_structured(request).await?;
+    let response = provider.complete(request).await?;
+    let value = crate::llm::extract_json(&response.content)
+        .ok_or_else(|| crate::error::LlmError::MissingStructuredOutput(response.content.clone()))?;
     let verdict: Verdict = serde_json::from_value(value)
         .map_err(|e| crate::error::LlmError::Parse(format!("failed to parse verdict: {e}")))?;
-    Ok(verdict)
+    Ok((verdict, response))
 }
 
 /// Run the common conversational LLM-judge flow over a whole conversation.
@@ -125,8 +130,8 @@ pub(crate) async fn score_via_llm(
 /// verdict.
 ///
 /// Returns `Ok(None)` when the metric should be skipped (no turn satisfies all
-/// required fields), otherwise `Ok(Some(verdict))` with the parsed score and
-/// reason.
+/// required fields), otherwise `Ok(Some((verdict, response)))` with the parsed
+/// score/reason and the underlying response for usage accounting.
 pub(crate) async fn measure_conversation_llm_judge(
     required: &[MultiTurnParams],
     provider: &Provider,
@@ -135,7 +140,7 @@ pub(crate) async fn measure_conversation_llm_judge(
     method: &str,
     extra_context: &HashMap<String, Value>,
     test_case: &ConversationalTestCase,
-) -> Result<Option<Verdict>, MetricError> {
+) -> Result<Option<(Verdict, crate::llm::LlmResponse)>, MetricError> {
     if !any_turn_has(required, &test_case.turns) {
         return Ok(None);
     }
@@ -148,6 +153,6 @@ pub(crate) async fn measure_conversation_llm_judge(
     ctx.extend(extra_context.clone());
 
     let prompt = registry.resolve(class_name, method, &ctx)?;
-    let verdict = score_via_llm(provider.as_provider(), prompt).await?;
-    Ok(Some(verdict))
+    let (verdict, response) = score_via_llm(provider.as_provider(), prompt).await?;
+    Ok(Some((verdict, response)))
 }

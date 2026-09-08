@@ -93,7 +93,12 @@ let response = provider.complete(request).await?;
   multi-turn and agentic metrics below.
 - **`MetricConfig`** — shared configuration (threshold, include_reason,
   strict_mode, async_mode, verbose_mode).
-- **`MetricResult`** — the serializable output of a single measurement.
+- **`MetricResult`** — the serializable output of a single measurement,
+  including `cost`, `input_tokens`, and `output_tokens` when the metric used an
+  LLM.
+- **`RetryPolicy` / `RetryProvider`** — wrap any provider with exponential
+  backoff retries on transient errors (default 3 retries, 200ms base, 8s max,
+  2.0 factor).
 
 **LLM-judge metrics** (need a provider; score 0–1 from an LLM verdict):
 
@@ -215,7 +220,8 @@ let out = registry.resolve("MyMetric", "greet", &ctx)?;
 - **`assert_test`** — runs metrics over a single test case and returns an error
   if any metric fails (the plain-library analogue of deepeval's `assert_test`).
 - **`EvalReport`** / **`CaseReport`** — serializable results with pass/fail/
-  skipped/errored counts.
+  skipped/errored counts, plus `total_cost()`, `total_input_tokens()`, and
+  `total_output_tokens()` aggregates.
 
 ```rust
 use deepeval_rs::eval::assert_test;
@@ -249,8 +255,8 @@ ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
 
 ## Roadmap
 
-- **Phase 6** — hardening, GEval logprob scoring, the `deepeval` CLI, full
-  examples/docs coverage.
+- **Phase 6** — hardening (retry/backoff, cost/token accounting, JSON repair ✅),
+  GEval logprob scoring, the `deepeval` CLI, full examples/docs coverage.
 
 ## Development
 

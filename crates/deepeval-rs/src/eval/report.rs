@@ -61,6 +61,41 @@ impl EvalReport {
             .filter(|r| r.error.is_some())
             .count()
     }
+
+    /// The total number of input tokens used across all measurements.
+    pub fn total_input_tokens(&self) -> u64 {
+        self.per_case
+            .iter()
+            .flat_map(|c| c.results.iter())
+            .map(|r| r.input_tokens as u64)
+            .sum()
+    }
+
+    /// The total number of output tokens used across all measurements.
+    pub fn total_output_tokens(&self) -> u64 {
+        self.per_case
+            .iter()
+            .flat_map(|c| c.results.iter())
+            .map(|r| r.output_tokens as u64)
+            .sum()
+    }
+
+    /// The total estimated cost across all measurements, if any are known.
+    pub fn total_cost(&self) -> Option<f64> {
+        let mut total = 0.0;
+        let mut any = false;
+        for result in self.per_case.iter().flat_map(|c| c.results.iter()) {
+            if let Some(cost) = result.cost {
+                total += cost;
+                any = true;
+            }
+        }
+        if any {
+            Some(total)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]

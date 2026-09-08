@@ -51,9 +51,10 @@ impl TurnFaithfulnessMetric {
         )
         .await?
         {
-            Some(verdict) => {
+            Some((verdict, response)) => {
                 self.state.score = Some(verdict.score.clamp(0.0, 1.0));
                 self.state.reason = verdict.reason;
+                self.state.accrue_usage(&response);
             }
             None => self.state.skipped = true,
         }
@@ -120,7 +121,7 @@ impl TurnFaithfulnessMetricBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::MockLlmProvider;
+    use crate::llm::{LlmResponse, MockLlmProvider};
     use crate::metrics::ConversationalMetric;
     use crate::test_case::Turn;
 
@@ -180,5 +181,23 @@ mod tests {
         metric.measure(&tc).await.unwrap();
         assert!(metric.skipped());
         assert_eq!(metric.score(), None);
+    }
+
+    #[tokio::test]
+    async fn accrues_usage_from_response() {
+        let response = LlmResponse::new(r#"{"score": 0.8, "reason": "grounded"}"#)
+            .with_usage(120, 30)
+            .with_cost(0.0015);
+        let provider = MockLlmProvider::responses([response]);
+        let mut metric = TurnFaithfulnessMetric::builder()
+            .provider(provider)
+            .threshold(0.7)
+            .build();
+
+        metric.measure(&case()).await.unwrap();
+        assert_eq!(metric.score(), Some(0.8));
+        assert_eq!(metric.input_tokens(), 120);
+        assert_eq!(metric.output_tokens(), 30);
+        assert_eq!(metric.cost(), Some(0.0015));
     }
 }

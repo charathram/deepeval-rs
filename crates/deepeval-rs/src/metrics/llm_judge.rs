@@ -12,7 +12,7 @@ use minijinja::Value;
 use serde::Deserialize;
 
 use crate::error::MetricError;
-use crate::llm::{ChatMessage, LlmProvider, LlmRequest};
+use crate::llm::{extract_json, ChatMessage, LlmProvider, LlmRequest};
 use crate::template::TemplateRegistry;
 use crate::test_case::{LLMTestCase, SingleTurnParams};
 
@@ -37,6 +37,8 @@ pub(crate) enum MeasureOutcome {
         score: f32,
         /// An optional reason.
         reason: Option<String>,
+        /// The LLM response usage (tokens/cost) accrued by the call.
+        usage: crate::llm::LlmResponse,
     },
 }
 
@@ -128,15 +130,20 @@ pub(crate) fn field_present(field: SingleTurnParams, test_case: &LLMTestCase) ->
 }
 
 /// Ask the LLM for a score verdict given a rendered prompt.
+///
+/// Returns the parsed verdict plus the underlying response (for usage/cost
+/// accounting).
 pub(crate) async fn score_via_llm(
     provider: &dyn LlmProvider,
     prompt: String,
-) -> Result<Verdict, MetricError> {
+) -> Result<(Verdict, crate::llm::LlmResponse), MetricError> {
     let request = LlmRequest::new(vec![ChatMessage::user(prompt)]);
-    let value = provider.complete_structured(request).await?;
+    let response = provider.complete(request).await?;
+    let value = extract_json(&response.content)
+        .ok_or_else(|| crate::error::LlmError::MissingStructuredOutput(response.content.clone()))?;
     let verdict: Verdict = serde_json::from_value(value)
         .map_err(|e| crate::error::LlmError::Parse(format!("failed to parse verdict: {e}")))?;
-    Ok(verdict)
+    Ok((verdict, response))
 }
 
 /// Run the common LLM-judge flow.
@@ -163,11 +170,12 @@ pub(crate) async fn measure_llm_judge(
     ctx.extend(extra_context.clone());
 
     let prompt = registry.resolve(class_name, method, &ctx)?;
-    let verdict = score_via_llm(provider, prompt).await?;
+    let (verdict, response) = score_via_llm(provider, prompt).await?;
     let score = verdict.score.clamp(0.0, 1.0);
 
     Ok(MeasureOutcome::Scored {
         score,
         reason: verdict.reason,
+        usage: response,
     })
 }
