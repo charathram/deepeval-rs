@@ -14,3 +14,4 @@ Guides for using the `deepeval-rs` library and the `deepeval` CLI.
 ## Reference
 
 - [README](../README.md) — project status and roadmap.
+- [CHANGELOG](../CHANGELOG.md) — release history.

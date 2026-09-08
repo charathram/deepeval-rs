@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-07 · After Phase 6 PR C (the `deepeval` CLI `test run`)
+> Last updated: 2026-09-08 · After Phase 6 PR D (examples, docs, CHANGELOG)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -22,7 +22,7 @@ faithfulness, hallucination, etc.).
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR C merged) |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ✅ merged |
 
 ## Repository layout
 
@@ -210,16 +210,19 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   not yet written — `RigProvider` already supports any rig model, so wiring a
   specific provider is a thin constructor.
 
-## What's next (Phase 6)
+## What's next
 
-Remaining Phase 6 work: full examples/docs coverage + CHANGELOG (PR D). The
-agentic metric required-field lists are not yet exposed as user-facing knobs
-(e.g. choosing which fields per turn) beyond what `Turn`/`MultiTurnParams`
-provide.
+Phase 6 is complete. The `deepeval` CLI `test run` subcommand (PR C) loads a
+YAML suite file, builds deterministic and LLM-judge metrics, evaluates the
+test cases, and prints a pass/fail report (see `docs/cli.md`). PR D added
+runnable examples per metric family, real-provider examples using the new
+`OpenAIProvider`/`AnthropicProvider` constructors, a `CHANGELOG.md`, and
+updated docs.
 
-The `deepeval` CLI `test run` subcommand is implemented (PR C). It loads a YAML
-suite file, builds deterministic and LLM-judge metrics, evaluates the test
-cases, and prints a pass/fail report. See `docs/cli.md` for the suite format.
+Possible follow-ups: expose the agentic metric required-field lists as
+user-facing knobs (e.g. choosing which fields per turn) beyond what
+`Turn`/`MultiTurnParams` provide, and add a `deepeval login` command for the
+Confident AI platform.
 
 ## Verification commands
 
