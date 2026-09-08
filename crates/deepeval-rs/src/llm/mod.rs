@@ -5,15 +5,17 @@
 //! than on rig types directly, which keeps the metric layer provider-agnostic
 //! and testable with a mock.
 
+mod logprobs;
 mod mock;
 mod providers;
 mod retry;
 mod types;
 
+pub use logprobs::{calculate_weighted_summed_score, extract_logprobs};
 pub use mock::MockLlmProvider;
 pub use providers::RigProvider;
 pub use retry::{RetryPolicy, RetryProvider};
-pub use types::{ChatMessage, LlmRequest, LlmResponse, Role};
+pub use types::{ChatMessage, LlmRequest, LlmResponse, Role, TokenLogprob, TokenLogprobs};
 
 use crate::error::LlmError;
 use async_trait::async_trait;

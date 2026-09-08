@@ -8,7 +8,7 @@
 use async_trait::async_trait;
 use rig::completion::{AssistantContent, CompletionModel, CompletionRequestBuilder, Message};
 
-use super::{LlmProvider, LlmRequest, LlmResponse, Role};
+use super::{extract_logprobs, LlmProvider, LlmRequest, LlmResponse, Role};
 use crate::error::LlmError;
 
 /// A [`LlmProvider`] backed by a concrete rig [`CompletionModel`].
@@ -61,10 +61,18 @@ where
             .collect::<Vec<_>>()
             .join("\n");
 
-        Ok(LlmResponse::new(content).with_usage(
+        let mut llm_response = LlmResponse::new(content).with_usage(
             response.usage.input_tokens as u32,
             response.usage.output_tokens as u32,
-        ))
+        );
+
+        if request.top_logprobs.is_some() {
+            if let Some(logprobs) = extract_logprobs(&response.raw) {
+                llm_response = llm_response.with_logprobs(logprobs);
+            }
+        }
+
+        Ok(llm_response)
     }
 }
 
@@ -92,6 +100,14 @@ fn build_completion_request<M: CompletionModel + Clone>(
     }
     if let Some(max_tokens) = request.max_tokens {
         builder = builder.max_tokens(max_tokens);
+    }
+    if let Some(top_logprobs) = request.top_logprobs {
+        // OpenAI-compatible providers expose log probabilities via these
+        // request parameters; rig forwards `additional_params` verbatim.
+        builder = builder.additional_params(serde_json::json!({
+            "logprobs": true,
+            "top_logprobs": top_logprobs,
+        }));
     }
 
     Ok(builder.build())

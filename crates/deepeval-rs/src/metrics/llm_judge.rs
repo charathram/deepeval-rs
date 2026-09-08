@@ -12,7 +12,9 @@ use minijinja::Value;
 use serde::Deserialize;
 
 use crate::error::MetricError;
-use crate::llm::{extract_json, ChatMessage, LlmProvider, LlmRequest};
+use crate::llm::{
+    calculate_weighted_summed_score, extract_json, ChatMessage, LlmProvider, LlmRequest,
+};
 use crate::template::TemplateRegistry;
 use crate::test_case::{LLMTestCase, SingleTurnParams};
 
@@ -144,6 +146,79 @@ pub(crate) async fn score_via_llm(
     let verdict: Verdict = serde_json::from_value(value)
         .map_err(|e| crate::error::LlmError::Parse(format!("failed to parse verdict: {e}")))?;
     Ok((verdict, response))
+}
+
+/// A parsed GEval verdict: an integer score and an optional reason.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct GevalVerdict {
+    /// The raw integer score in `[min_score, max_score]`.
+    pub score: i64,
+    /// An optional natural-language reason.
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+/// Run the GEval flow with logprob-based scoring.
+///
+/// Like [`measure_llm_judge`], this validates required fields, renders the
+/// prompt, and calls the LLM. Unlike it, the request asks for log
+/// probabilities and the raw integer score is confidence-weighted against the
+/// token log probabilities (mirroring deepeval's g-eval fix) before being
+/// normalized to `[0, 1]`.
+///
+/// The signature mirrors [`measure_llm_judge`] plus the two score-range
+/// bounds, so the argument count is intentionally high.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn measure_geval(
+    required: &[SingleTurnParams],
+    provider: &dyn LlmProvider,
+    registry: &TemplateRegistry,
+    class_name: &str,
+    method: &str,
+    extra_context: &HashMap<String, Value>,
+    test_case: &LLMTestCase,
+    min_score: u32,
+    max_score: u32,
+) -> Result<MeasureOutcome, MetricError> {
+    for field in required {
+        if !field_present(*field, test_case) {
+            return Ok(MeasureOutcome::Skipped);
+        }
+    }
+
+    let mut ctx = case_context(test_case);
+    ctx.extend(extra_context.clone());
+    ctx.insert("min_score".to_string(), Value::from(min_score));
+    ctx.insert("max_score".to_string(), Value::from(max_score));
+
+    let prompt = registry.resolve(class_name, method, &ctx)?;
+    let request = LlmRequest::new(vec![ChatMessage::user(prompt)]).with_top_logprobs(5);
+    let response = provider.complete(request).await?;
+
+    let value = extract_json(&response.content)
+        .ok_or_else(|| crate::error::LlmError::MissingStructuredOutput(response.content.clone()))?;
+    let verdict: GevalVerdict = serde_json::from_value(value)
+        .map_err(|e| crate::error::LlmError::Parse(format!("failed to parse verdict: {e}")))?;
+
+    let raw = verdict.score as f64;
+    let weighted = response
+        .logprobs
+        .as_deref()
+        .map(|lps| calculate_weighted_summed_score(raw, lps))
+        .unwrap_or(raw);
+
+    let range = (max_score - min_score) as f64;
+    let normalized = if range > 0.0 {
+        ((weighted - min_score as f64) / range).clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+
+    Ok(MeasureOutcome::Scored {
+        score: normalized as f32,
+        reason: verdict.reason,
+        usage: response,
+    })
 }
 
 /// Run the common LLM-judge flow.

@@ -142,9 +142,11 @@ let relevancy = AnswerRelevancyMetric::builder()
 // Deterministic metric: no provider.
 let exact = ExactMatchMetric::builder().threshold(0.5).build();
 
-// GEval: needs criteria too.
+// GEval: needs criteria too. It asks the judge for an integer score in a
+// range (default 0-10) and confidence-weights it against token log
+// probabilities before normalizing to 0-1.
 let geval = GEval::builder()
-    .provider(MockLlmProvider::text(r#"{"score": 0.8}"#))
+    .provider(MockLlmProvider::text(r#"{"score": 8}"#))
     .criteria("The answer is concise and accurate.")
     .threshold(0.7)
     .build();

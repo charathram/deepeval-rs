@@ -15,7 +15,7 @@ Criteria:
 {{ criteria }}
 
 Return a JSON object with exactly two fields:
-- "score": a float between 0.0 and 1.0 indicating how well the actual output satisfies the criteria (1.0 = fully satisfies, 0.0 = does not satisfy at all).
+- "score": an integer between {{ min_score }} and {{ max_score }} indicating how well the actual output satisfies the criteria ({{ max_score }} = fully satisfies, {{ min_score }} = does not satisfy at all).
 - "reason": a brief explanation of the score.
 
 Return ONLY the JSON object, with no surrounding text.

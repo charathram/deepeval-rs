@@ -1,13 +1,15 @@
 //! GEval: an LLM-judge metric that scores an output against custom criteria.
 //!
-//! This is a simplified chain-of-thought version. Logprob-based scoring is
-//! deferred to Phase 6.
+//! GEval asks the judge for an integer score in a range (default 0-10) and
+//! requests token log probabilities. The raw score is then confidence-weighted
+//! against the log probabilities (mirroring deepeval's g-eval fix) and
+//! normalized to `[0, 1]`.
 
 use std::collections::HashMap;
 
 use minijinja::Value;
 
-use super::llm_judge::{measure_llm_judge, MeasureOutcome, Provider};
+use super::llm_judge::{measure_geval, MeasureOutcome, Provider};
 use super::{impl_metric, MetricConfig, MetricState};
 use crate::error::MetricError;
 use crate::template::TemplateRegistry;
@@ -16,6 +18,8 @@ use crate::test_case::{LLMTestCase, SingleTurnParams};
 const CLASS_NAME: &str = "GEval";
 const METHOD: &str = "generate_verdict";
 const TEMPLATE: &str = include_str!("../../templates/geval/generate_verdict.txt");
+const DEFAULT_MIN_SCORE: u32 = 0;
+const DEFAULT_MAX_SCORE: u32 = 10;
 
 /// GEval: scores an output against user-supplied criteria using an LLM judge.
 ///
@@ -28,6 +32,8 @@ pub struct GEval {
     registry: std::sync::Arc<TemplateRegistry>,
     criteria: String,
     evaluation_steps: Vec<String>,
+    min_score: u32,
+    max_score: u32,
 }
 
 impl GEval {
@@ -44,7 +50,7 @@ impl GEval {
             Value::from(self.evaluation_steps.join("\n")),
         );
 
-        match measure_llm_judge(
+        match measure_geval(
             &[SingleTurnParams::Input, SingleTurnParams::ActualOutput],
             self.provider.as_provider(),
             &self.registry,
@@ -52,6 +58,8 @@ impl GEval {
             METHOD,
             &extra,
             test_case,
+            self.min_score,
+            self.max_score,
         )
         .await?
         {
@@ -73,12 +81,27 @@ impl GEval {
 impl_metric!(GEval, "GEval");
 
 /// Builder for [`GEval`].
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GEvalBuilder {
     config: MetricConfig,
     provider: Option<Provider>,
     criteria: Option<String>,
     evaluation_steps: Vec<String>,
+    min_score: u32,
+    max_score: u32,
+}
+
+impl Default for GEvalBuilder {
+    fn default() -> Self {
+        Self {
+            config: MetricConfig::default(),
+            provider: None,
+            criteria: None,
+            evaluation_steps: Vec::new(),
+            min_score: DEFAULT_MIN_SCORE,
+            max_score: DEFAULT_MAX_SCORE,
+        }
+    }
 }
 
 impl GEvalBuilder {
@@ -100,6 +123,13 @@ impl GEvalBuilder {
     /// Set optional evaluation steps that guide the judge.
     pub fn evaluation_steps(mut self, steps: Vec<String>) -> Self {
         self.evaluation_steps = steps;
+        self
+    }
+
+    /// Set the integer score range the judge is asked to use (default 0-10).
+    pub fn score_range(mut self, min: u32, max: u32) -> Self {
+        self.min_score = min;
+        self.max_score = max;
         self
     }
 
@@ -137,6 +167,8 @@ impl GEvalBuilder {
             registry: std::sync::Arc::new(registry),
             criteria,
             evaluation_steps: self.evaluation_steps,
+            min_score: self.min_score,
+            max_score: self.max_score,
         }
     }
 }
@@ -156,7 +188,7 @@ mod tests {
 
     #[tokio::test]
     async fn scores_high_when_llm_returns_high_score() {
-        let provider = MockLlmProvider::text(r#"{"score": 0.9, "reason": "correct"}"#);
+        let provider = MockLlmProvider::text(r#"{"score": 9, "reason": "correct"}"#);
         let mut metric = GEval::builder()
             .provider(provider)
             .criteria("The answer must be factually correct.")
@@ -172,7 +204,7 @@ mod tests {
 
     #[tokio::test]
     async fn scores_low_when_llm_returns_low_score() {
-        let provider = MockLlmProvider::text(r#"{"score": 0.2, "reason": "wrong"}"#);
+        let provider = MockLlmProvider::text(r#"{"score": 2, "reason": "wrong"}"#);
         let mut metric = GEval::builder()
             .provider(provider)
             .criteria("The answer must be factually correct.")
@@ -185,7 +217,7 @@ mod tests {
 
     #[tokio::test]
     async fn suppresses_reason_when_include_reason_is_false() {
-        let provider = MockLlmProvider::text(r#"{"score": 0.9, "reason": "correct"}"#);
+        let provider = MockLlmProvider::text(r#"{"score": 9, "reason": "correct"}"#);
         let mut metric = GEval::builder()
             .provider(provider)
             .criteria("The answer must be factually correct.")
@@ -199,7 +231,7 @@ mod tests {
 
     #[tokio::test]
     async fn skips_when_actual_output_missing() {
-        let provider = MockLlmProvider::text(r#"{"score": 0.9}"#);
+        let provider = MockLlmProvider::text(r#"{"score": 9}"#);
         let mut metric = GEval::builder()
             .provider(provider)
             .criteria("factual")

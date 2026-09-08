@@ -62,6 +62,12 @@ pub struct LlmRequest {
     pub temperature: Option<f64>,
     /// The maximum number of tokens to generate.
     pub max_tokens: Option<u64>,
+    /// The number of top alternative tokens to return log probabilities for.
+    ///
+    /// When set, the provider is asked to return per-token log probabilities
+    /// (and the top alternatives) on the response. Used by logprob-based
+    /// scoring such as GEval.
+    pub top_logprobs: Option<u32>,
 }
 
 impl LlmRequest {
@@ -72,6 +78,7 @@ impl LlmRequest {
             model: None,
             temperature: None,
             max_tokens: None,
+            top_logprobs: None,
         }
     }
 
@@ -92,6 +99,32 @@ impl LlmRequest {
         self.max_tokens = Some(max_tokens);
         self
     }
+
+    /// Request log probabilities for the top `n` alternative tokens.
+    pub fn with_top_logprobs(mut self, top_logprobs: u32) -> Self {
+        self.top_logprobs = Some(top_logprobs);
+        self
+    }
+}
+
+/// The log probability of a single token.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TokenLogprob {
+    /// The token text.
+    pub token: String,
+    /// The log probability of the token.
+    pub logprob: f64,
+}
+
+/// Log probabilities for one generated token position.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TokenLogprobs {
+    /// The token text.
+    pub token: String,
+    /// The log probability of the token.
+    pub logprob: f64,
+    /// The top alternative tokens and their log probabilities.
+    pub top_logprobs: Vec<TokenLogprob>,
 }
 
 /// A response from an LLM provider.
@@ -105,6 +138,8 @@ pub struct LlmResponse {
     pub output_tokens: u32,
     /// The estimated cost of the call, if known.
     pub cost: Option<f64>,
+    /// Per-token log probabilities, if the request asked for them.
+    pub logprobs: Option<Vec<TokenLogprobs>>,
 }
 
 impl LlmResponse {
@@ -115,6 +150,7 @@ impl LlmResponse {
             input_tokens: 0,
             output_tokens: 0,
             cost: None,
+            logprobs: None,
         }
     }
 
@@ -128,6 +164,12 @@ impl LlmResponse {
     /// Set the estimated cost.
     pub fn with_cost(mut self, cost: f64) -> Self {
         self.cost = Some(cost);
+        self
+    }
+
+    /// Set the per-token log probabilities.
+    pub fn with_logprobs(mut self, logprobs: Vec<TokenLogprobs>) -> Self {
+        self.logprobs = Some(logprobs);
         self
     }
 }
