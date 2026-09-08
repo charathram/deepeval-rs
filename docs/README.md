@@ -6,6 +6,8 @@ Guides for using the `deepeval-rs` library and the `deepeval` CLI.
 
 - [Getting Started](getting-started.md) — add the dependency, build test cases,
   configure a provider, and run evaluations.
+- [Tutorials](tutorials/README.md) — step-by-step guides that build each of the
+  examples, arranged as a progressive curriculum.
 
 ## CLI
 
