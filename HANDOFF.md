@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-07 · After Phase 6 PR B (GEval logprob-based scoring)
+> Last updated: 2026-09-07 · After Phase 6 PR C (the `deepeval` CLI `test run`)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -22,14 +22,14 @@ faithfulness, hallucination, etc.).
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR B merged) |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR C merged) |
 
 ## Repository layout
 
 ```
 crates/
   deepeval-rs/   # the library (crate name: deepeval-rs, import path: deepeval_rs)
-  deepeval/      # the `deepeval` CLI (stub; `test run` lands in Phase 6)
+  deepeval/      # the `deepeval` CLI (`test run` implemented in Phase 6)
 docs/            # usage guides (getting-started.md, cli.md, README.md)
 .github/
   prompts/plan-deepevalRs.prompt.md   # the original implementation plan
@@ -212,10 +212,14 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 
 ## What's next (Phase 6)
 
-Remaining Phase 6 work: the `deepeval` CLI `test run` (PR C), and full
-examples/docs coverage + CHANGELOG (PR D). The agentic metric required-field
-lists are not yet exposed as user-facing knobs (e.g. choosing which fields per
-turn) beyond what `Turn`/`MultiTurnParams` provide.
+Remaining Phase 6 work: full examples/docs coverage + CHANGELOG (PR D). The
+agentic metric required-field lists are not yet exposed as user-facing knobs
+(e.g. choosing which fields per turn) beyond what `Turn`/`MultiTurnParams`
+provide.
+
+The `deepeval` CLI `test run` subcommand is implemented (PR C). It loads a YAML
+suite file, builds deterministic and LLM-judge metrics, evaluates the test
+cases, and prints a pass/fail report. See `docs/cli.md` for the suite format.
 
 ## Verification commands
 
