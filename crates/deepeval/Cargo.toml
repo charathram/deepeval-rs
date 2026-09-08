@@ -17,3 +17,5 @@ deepeval-rs = { path = "../deepeval-rs", features = ["cli"] }
 tokio.workspace = true
 clap.workspace = true
 anyhow = "1"
+serde.workspace = true
+serde_yaml.workspace = true

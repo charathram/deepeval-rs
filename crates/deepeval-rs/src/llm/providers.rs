@@ -6,10 +6,69 @@
 //! providers.
 
 use async_trait::async_trait;
+use rig::client::{CompletionClient, ProviderClient};
 use rig::completion::{AssistantContent, CompletionModel, CompletionRequestBuilder, Message};
 
 use super::{extract_logprobs, LlmProvider, LlmRequest, LlmResponse, Role};
 use crate::error::LlmError;
+
+/// Default model used by [`OpenAIProvider::from_env`].
+pub const DEFAULT_OPENAI_MODEL: &str = "gpt-4o-mini";
+/// Default model used by [`AnthropicProvider::from_env`].
+pub const DEFAULT_ANTHROPIC_MODEL: &str = "claude-haiku-4-5";
+
+/// A [`RigProvider`] backed by an OpenAI-compatible chat-completions model.
+///
+/// Constructed from the `OPENAI_API_KEY` (and optional `OPENAI_BASE_URL`)
+/// environment variables.
+pub struct OpenAIProvider;
+
+impl OpenAIProvider {
+    /// Build an OpenAI provider from `OPENAI_API_KEY`, using
+    /// [`DEFAULT_OPENAI_MODEL`].
+    pub fn from_env(
+    ) -> Result<RigProvider<rig::providers::openai::completion::CompletionModel>, LlmError> {
+        Self::from_env_with_model(DEFAULT_OPENAI_MODEL)
+    }
+
+    /// Build an OpenAI provider from `OPENAI_API_KEY` with a specific model.
+    pub fn from_env_with_model(
+        model: impl Into<String>,
+    ) -> Result<RigProvider<rig::providers::openai::completion::CompletionModel>, LlmError> {
+        let model = model.into();
+        let client = rig::providers::openai::Client::from_env()
+            .map_err(|e| LlmError::Provider(format!("failed to build OpenAI client: {e}")))?;
+        let completion = client.completions_api().completion_model(model.clone());
+        Ok(RigProvider::new(completion, model))
+    }
+}
+
+/// A [`RigProvider`] backed by an Anthropic completion model.
+///
+/// Constructed from the `ANTHROPIC_API_KEY` (and optional
+/// `ANTHROPIC_BASE_URL`) environment variables.
+pub struct AnthropicProvider;
+
+impl AnthropicProvider {
+    /// Build an Anthropic provider from `ANTHROPIC_API_KEY`, using
+    /// [`DEFAULT_ANTHROPIC_MODEL`].
+    pub fn from_env(
+    ) -> Result<RigProvider<rig::providers::anthropic::completion::CompletionModel>, LlmError> {
+        Self::from_env_with_model(DEFAULT_ANTHROPIC_MODEL)
+    }
+
+    /// Build an Anthropic provider from `ANTHROPIC_API_KEY` with a specific
+    /// model.
+    pub fn from_env_with_model(
+        model: impl Into<String>,
+    ) -> Result<RigProvider<rig::providers::anthropic::completion::CompletionModel>, LlmError> {
+        let model = model.into();
+        let client = rig::providers::anthropic::Client::from_env()
+            .map_err(|e| LlmError::Provider(format!("failed to build Anthropic client: {e}")))?;
+        let completion = client.completion_model(model.clone());
+        Ok(RigProvider::new(completion, model))
+    }
+}
 
 /// A [`LlmProvider`] backed by a concrete rig [`CompletionModel`].
 ///

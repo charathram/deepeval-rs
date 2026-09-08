@@ -27,14 +27,14 @@ pull request.
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ⏳ planned |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR C merged) |
 
 ## Workspace layout
 
 ```
 crates/
   deepeval-rs/   # the library
-  deepeval/      # the `deepeval` CLI (stub; `test run` lands in Phase 6)
+  deepeval/      # the `deepeval` CLI (`test run` implemented in Phase 6)
 ```
 
 ## What's implemented so far
@@ -258,7 +258,8 @@ ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
 ## Roadmap
 
 - **Phase 6** — hardening (retry/backoff, cost/token accounting, JSON repair ✅),
-  GEval logprob scoring, the `deepeval` CLI, full examples/docs coverage.
+  GEval logprob scoring ✅, the `deepeval` CLI `test run` ✅, full examples/docs
+  coverage.
 
 ## Development
 

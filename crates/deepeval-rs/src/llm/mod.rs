@@ -13,7 +13,9 @@ mod types;
 
 pub use logprobs::{calculate_weighted_summed_score, extract_logprobs};
 pub use mock::MockLlmProvider;
-pub use providers::RigProvider;
+pub use providers::{
+    AnthropicProvider, OpenAIProvider, RigProvider, DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL,
+};
 pub use retry::{RetryPolicy, RetryProvider};
 pub use types::{ChatMessage, LlmRequest, LlmResponse, Role, TokenLogprob, TokenLogprobs};
 
@@ -46,6 +48,24 @@ pub trait LlmProvider: Send + Sync {
         let json = extract_json(&response.content)
             .ok_or_else(|| LlmError::MissingStructuredOutput(response.content.clone()))?;
         Ok(json)
+    }
+}
+
+#[async_trait]
+impl LlmProvider for Box<dyn LlmProvider> {
+    fn model_name(&self) -> &str {
+        (**self).model_name()
+    }
+
+    async fn complete(&self, request: LlmRequest) -> Result<LlmResponse, LlmError> {
+        (**self).complete(request).await
+    }
+
+    async fn complete_structured(
+        &self,
+        request: LlmRequest,
+    ) -> Result<serde_json::Value, LlmError> {
+        (**self).complete_structured(request).await
     }
 }
 
