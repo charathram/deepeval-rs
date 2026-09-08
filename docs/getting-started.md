@@ -40,9 +40,10 @@ let test_case = LLMTestCase::builder()
 ## Configure an LLM provider
 
 Metrics that use an LLM-as-a-judge need a provider. The library ships a
-[`MockLlmProvider`](crate::llm::MockLlmProvider) for tests and a
+[`MockLlmProvider`](crate::llm::MockLlmProvider) for tests, a
 [`RigProvider`](crate::llm::RigProvider) that wraps any
-[rig](https://github.com/0xplaygrounds/rig) completion model.
+[rig](https://github.com/0xplaygrounds/rig) completion model, and concrete
+constructors for the common providers.
 
 ```rust
 use deepeval_rs::llm::{ChatMessage, LlmProvider, LlmRequest, MockLlmProvider};
@@ -52,8 +53,27 @@ let request = LlmRequest::new(vec![ChatMessage::user("Say hi.")]);
 let response = provider.complete(request).await?;
 ```
 
-> **Note:** concrete provider constructors (e.g. `OpenAIProvider::from_env()`)
-> land in a later phase. For now, wrap a rig model with `RigProvider::new`.
+### Real providers
+
+For real models, use the concrete constructors. They read the API key from the
+environment and wrap a rig completion model behind the [`LlmProvider`] seam:
+
+```rust
+use deepeval_rs::llm::{AnthropicProvider, OpenAIProvider};
+
+// Reads OPENAI_API_KEY (and optional OPENAI_BASE_URL); default model gpt-4o-mini.
+let openai = OpenAIProvider::from_env()?;
+// Pick a specific model instead of the default.
+let openai = OpenAIProvider::from_env_with_model("gpt-4o")?;
+
+// Reads ANTHROPIC_API_KEY (and optional ANTHROPIC_BASE_URL); default claude-haiku-4-5.
+let anthropic = AnthropicProvider::from_env()?;
+let anthropic = AnthropicProvider::from_env_with_model("claude-sonnet-4-6")?;
+```
+
+To wrap an arbitrary rig completion model (e.g. a generic OpenAI-compatible
+endpoint), use [`RigProvider`](crate::llm::RigProvider) directly. See the
+`real_provider_openai` and `real_provider_anthropic` examples.
 
 ## Build a metric
 

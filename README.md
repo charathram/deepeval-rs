@@ -13,6 +13,7 @@ hallucination. Metrics run asynchronously and can be composed into an
 - [Getting Started](docs/getting-started.md) — how to use the library.
 - [The `deepeval` CLI](docs/cli.md) — the command-line tool.
 - [Docs index](docs/README.md).
+- [Changelog](CHANGELOG.md) — release history.
 
 ## Status
 
@@ -27,7 +28,7 @@ pull request.
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR C merged) |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ✅ merged |
 
 ## Workspace layout
 
@@ -259,7 +260,7 @@ ANTHROPIC_API_KEY=... cargo run --example real_provider_anthropic
 
 - **Phase 6** — hardening (retry/backoff, cost/token accounting, JSON repair ✅),
   GEval logprob scoring ✅, the `deepeval` CLI `test run` ✅, full examples/docs
-  coverage.
+  coverage ✅.
 
 ## Development
 
