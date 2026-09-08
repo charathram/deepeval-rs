@@ -123,6 +123,10 @@ pub(crate) async fn score_via_llm(
 /// a skip marker if not), renders the `(class_name, method)` template with a
 /// serialized conversation plus `extra_context`, calls the LLM, and parses the
 /// verdict.
+///
+/// Returns `Ok(None)` when the metric should be skipped (no turn satisfies all
+/// required fields), otherwise `Ok(Some(verdict))` with the parsed score and
+/// reason.
 pub(crate) async fn measure_conversation_llm_judge(
     required: &[MultiTurnParams],
     provider: &Provider,
@@ -131,7 +135,7 @@ pub(crate) async fn measure_conversation_llm_judge(
     method: &str,
     extra_context: &HashMap<String, Value>,
     test_case: &ConversationalTestCase,
-) -> Result<Option<f32>, MetricError> {
+) -> Result<Option<Verdict>, MetricError> {
     if !any_turn_has(required, &test_case.turns) {
         return Ok(None);
     }
@@ -145,5 +149,5 @@ pub(crate) async fn measure_conversation_llm_judge(
 
     let prompt = registry.resolve(class_name, method, &ctx)?;
     let verdict = score_via_llm(provider.as_provider(), prompt).await?;
-    Ok(Some(verdict.score.clamp(0.0, 1.0)))
+    Ok(Some(verdict))
 }

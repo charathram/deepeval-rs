@@ -51,7 +51,10 @@ impl TurnFaithfulnessMetric {
         )
         .await?
         {
-            Some(score) => self.state.score = Some(score),
+            Some(verdict) => {
+                self.state.score = Some(verdict.score.clamp(0.0, 1.0));
+                self.state.reason = verdict.reason;
+            }
             None => self.state.skipped = true,
         }
         Ok(())
@@ -146,10 +149,12 @@ mod tests {
         let mut metric = TurnFaithfulnessMetric::builder()
             .provider(provider)
             .threshold(0.7)
+            .include_reason(true)
             .build();
 
         metric.measure(&case()).await.unwrap();
         assert_eq!(metric.score(), Some(0.9));
+        assert_eq!(metric.reason(), Some("all claims grounded"));
         assert_eq!(metric.is_successful(), Some(true));
     }
 

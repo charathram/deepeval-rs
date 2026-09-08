@@ -70,11 +70,12 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 - `llm_judge` module — shared LLM-judge flow: validate required fields → render
   prompt → `provider.complete_structured` → parse `{score, reason}` verdict →
   clamp score to 0–1.
-- `conversational_llm_judge` module — shared multi-turn LLM-judge flow.
+- **`conversational_llm_judge` module — shared multi-turn LLM-judge flow.
   `measure_conversation_llm_judge(required, provider, registry, class_name,
   method, extra_context, test_case)` returns `Ok(None)` when no turn satisfies
-  all required fields (metric marked skipped), otherwise `Ok(Some(score))`. It
-  auto-injects a `dialog` variable and the `turns` field fragments.
+  all required fields (metric marked skipped), otherwise `Ok(Some(verdict))`
+  with the parsed score and reason. It auto-injects a `dialog` variable and the
+  `turns` field fragments.
 - **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
   `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
 - **RAG metrics (LLM-judge):** `ContextualPrecisionMetric`,
@@ -159,9 +160,9 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   revisit if distinct-but-identical inputs need separate reports.
   `evaluate_conversational` groups by the first turn's input (empty string when a
   case has no turns).
-- **`conversational_llm_judge::measure_conversation_llm_judge` returns only the
-  score (`Option<f32>`), not a reason.** Multi-turn metrics therefore leave
-  `reason` unset; extend the helper if reasons are wanted later.
+- **`conversational_llm_judge::measure_conversation_llm_judge` returns a
+  `Verdict` (score + reason).** Multi-turn metrics record both on their state;
+  `reason` is surfaced when `include_reason` is set.
 - **Feature flags** `openai`/`anthropic`/`openai-compatible` are placeholders
   (empty). Concrete provider constructors (e.g. `OpenAIProvider::from_env()`) are
   not yet written — `RigProvider` already supports any rig model, so wiring a

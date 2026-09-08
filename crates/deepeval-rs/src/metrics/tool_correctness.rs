@@ -53,7 +53,10 @@ impl ToolCorrectnessMetric {
         .await?
         {
             None => self.state.skipped = true,
-            Some(score) => self.state.score = Some(score),
+            Some(verdict) => {
+                self.state.score = Some(verdict.score.clamp(0.0, 1.0));
+                self.state.reason = verdict.reason;
+            }
         }
         Ok(())
     }
