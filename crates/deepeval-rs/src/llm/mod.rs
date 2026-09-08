@@ -7,10 +7,12 @@
 
 mod mock;
 mod providers;
+mod retry;
 mod types;
 
 pub use mock::MockLlmProvider;
 pub use providers::RigProvider;
+pub use retry::{RetryPolicy, RetryProvider};
 pub use types::{ChatMessage, LlmRequest, LlmResponse, Role};
 
 use crate::error::LlmError;
@@ -62,6 +64,14 @@ pub(crate) fn extract_json(content: &str) -> Option<serde_json::Value> {
         return Some(value);
     }
 
+    // Try repairing common LLM JSON mistakes (trailing commas, unquoted
+    // keys, single-quoted strings) before falling back to scanning.
+    if let Some(repaired) = repair_json(inner) {
+        if let Ok(value) = serde_json::from_str(&repaired) {
+            return Some(value);
+        }
+    }
+
     // Otherwise scan for the first balanced JSON object or array.
     let bytes = inner.as_bytes();
     let mut i = 0;
@@ -75,6 +85,99 @@ pub(crate) fn extract_json(content: &str) -> Option<serde_json::Value> {
         i += 1;
     }
     None
+}
+
+/// Best-effort repair of common LLM JSON mistakes: trailing commas, unquoted
+/// keys, and single-quoted strings. Returns `None` if nothing needed fixing.
+fn repair_json(input: &str) -> Option<String> {
+    let mut out = String::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    let mut changed = false;
+    let mut in_string = false;
+    let mut escaped = false;
+    // The quote character that opened the current string (b'"' or b'\'').
+    let mut open_quote = b'"';
+
+    while i < bytes.len() {
+        let b = bytes[i];
+        if in_string {
+            if escaped {
+                out.push(b as char);
+                escaped = false;
+            } else if b == b'\\' {
+                out.push(b as char);
+                escaped = true;
+            } else if b == open_quote {
+                out.push('"');
+                in_string = false;
+            } else {
+                out.push(b as char);
+            }
+            i += 1;
+            continue;
+        }
+        match b {
+            b'"' => {
+                in_string = true;
+                open_quote = b'"';
+                out.push('"');
+                i += 1;
+            }
+            b'\'' => {
+                // Convert a single-quoted string to a double-quoted one.
+                in_string = true;
+                open_quote = b'\'';
+                out.push('"');
+                changed = true;
+                i += 1;
+            }
+            b',' => {
+                // Drop a trailing comma before `}` or `]`.
+                let next = bytes.get(i + 1).copied();
+                if next == Some(b'}') || next == Some(b']') {
+                    changed = true;
+                } else {
+                    out.push(',');
+                }
+                i += 1;
+            }
+            b'{' | b'[' | b':' => {
+                out.push(b as char);
+                i += 1;
+            }
+            _ if b.is_ascii_whitespace() => {
+                out.push(b as char);
+                i += 1;
+            }
+            _ => {
+                // Unquoted key: scan ahead to the colon and quote it.
+                if let Some(colon) = input[i..].find(':') {
+                    let key = &input[i..i + colon];
+                    let key = key.trim();
+                    if !key.is_empty()
+                        && key.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+                    {
+                        out.push('"');
+                        out.push_str(key);
+                        out.push('"');
+                        out.push(':');
+                        i += colon + 1;
+                        changed = true;
+                        continue;
+                    }
+                }
+                out.push(b as char);
+                i += 1;
+            }
+        }
+    }
+
+    if changed {
+        Some(out)
+    } else {
+        None
+    }
 }
 
 /// Parse a balanced JSON value starting at `start` (which must point at `{`
@@ -148,5 +251,37 @@ mod tests {
     #[test]
     fn returns_none_for_no_json() {
         assert!(extract_json("no json here").is_none());
+    }
+
+    #[test]
+    fn repairs_trailing_comma() {
+        let content = r#"{"score": 0.8, "reason": "good",}"#;
+        let value = extract_json(content).unwrap();
+        assert_eq!(value["score"], 0.8);
+        assert_eq!(value["reason"], "good");
+    }
+
+    #[test]
+    fn repairs_unquoted_keys() {
+        let content = r#"{score: 0.8, reason: "good"}"#;
+        let value = extract_json(content).unwrap();
+        assert_eq!(value["score"], 0.8);
+        assert_eq!(value["reason"], "good");
+    }
+
+    #[test]
+    fn repairs_single_quoted_strings() {
+        let content = r#"{'score': 0.8, 'reason': 'good'}"#;
+        let value = extract_json(content).unwrap();
+        assert_eq!(value["score"], 0.8);
+        assert_eq!(value["reason"], "good");
+    }
+
+    #[test]
+    fn repairs_combined_mistakes() {
+        let content = r#"{score: 0.8, reason: 'good',}"#;
+        let value = extract_json(content).unwrap();
+        assert_eq!(value["score"], 0.8);
+        assert_eq!(value["reason"], "good");
     }
 }

@@ -122,6 +122,12 @@ pub(crate) struct MetricState {
     pub reason: Option<String>,
     /// Whether the metric was skipped (a required field was missing).
     pub skipped: bool,
+    /// The estimated cost of the LLM calls, if known.
+    pub cost: Option<f64>,
+    /// The number of input tokens used.
+    pub input_tokens: u32,
+    /// The number of output tokens used.
+    pub output_tokens: u32,
 }
 
 impl MetricState {
@@ -132,12 +138,24 @@ impl MetricState {
             score: None,
             reason: None,
             skipped: false,
+            cost: None,
+            input_tokens: 0,
+            output_tokens: 0,
         }
     }
 
     /// A fresh copy with the same configuration but cleared measurement state.
     pub fn reset(&self) -> Self {
         Self::new(self.config.clone())
+    }
+
+    /// Accrue usage from an LLM response into this state.
+    pub fn accrue_usage(&mut self, response: &crate::llm::LlmResponse) {
+        self.input_tokens = self.input_tokens.saturating_add(response.input_tokens);
+        self.output_tokens = self.output_tokens.saturating_add(response.output_tokens);
+        if let Some(cost) = response.cost {
+            self.cost = Some(self.cost.unwrap_or(0.0) + cost);
+        }
     }
 }
 

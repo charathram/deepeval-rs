@@ -114,6 +114,21 @@ pub trait Metric: Send + Sync {
         false
     }
 
+    /// The estimated cost of the LLM calls made while measuring, if known.
+    fn cost(&self) -> Option<f64> {
+        None
+    }
+
+    /// The number of input tokens used while measuring.
+    fn input_tokens(&self) -> u32 {
+        0
+    }
+
+    /// The number of output tokens used while measuring.
+    fn output_tokens(&self) -> u32 {
+        0
+    }
+
     /// Clone this metric as a boxed trait object.
     fn clone_box(&self) -> Box<dyn Metric>;
 }
@@ -167,6 +182,21 @@ pub trait ConversationalMetric: Send + Sync {
         false
     }
 
+    /// The estimated cost of the LLM calls made while measuring, if known.
+    fn cost(&self) -> Option<f64> {
+        None
+    }
+
+    /// The number of input tokens used while measuring.
+    fn input_tokens(&self) -> u32 {
+        0
+    }
+
+    /// The number of output tokens used while measuring.
+    fn output_tokens(&self) -> u32 {
+        0
+    }
+
     /// Clone this metric as a boxed trait object.
     fn clone_box(&self) -> Box<dyn ConversationalMetric>;
 }
@@ -210,6 +240,18 @@ macro_rules! impl_metric {
 
             fn skipped(&self) -> bool {
                 self.state.skipped
+            }
+
+            fn cost(&self) -> Option<f64> {
+                self.state.cost
+            }
+
+            fn input_tokens(&self) -> u32 {
+                self.state.input_tokens
+            }
+
+            fn output_tokens(&self) -> u32 {
+                self.state.output_tokens
             }
 
             fn clone_box(&self) -> Box<dyn $crate::metrics::Metric> {
@@ -262,6 +304,18 @@ macro_rules! impl_conversational_metric {
 
             fn skipped(&self) -> bool {
                 self.state.skipped
+            }
+
+            fn cost(&self) -> Option<f64> {
+                self.state.cost
+            }
+
+            fn input_tokens(&self) -> u32 {
+                self.state.input_tokens
+            }
+
+            fn output_tokens(&self) -> u32 {
+                self.state.output_tokens
             }
 
             fn clone_box(&self) -> Box<dyn $crate::metrics::ConversationalMetric> {

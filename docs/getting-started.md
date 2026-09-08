@@ -196,7 +196,24 @@ let report = evaluate(&test_cases, &metrics).await;
 
 println!("passed: {}", report.passed());
 println!("failed: {}", report.failed());
+println!("total cost: {:?}", report.total_cost());
+println!("tokens: {} in / {} out", report.total_input_tokens(), report.total_output_tokens());
 ```
+
+### Retrying transient provider errors
+
+Wrap any provider with [`RetryProvider`](crate::llm::RetryProvider) to retry
+transient errors (transport failures, provider 5xx) with exponential backoff:
+
+```rust
+use deepeval_rs::llm::{RetryPolicy, RetryProvider};
+
+let retrying = RetryProvider::new(provider, RetryPolicy::default());
+// retrying implements LlmProvider; pass it to any metric builder.
+```
+
+Tune the policy with `RetryPolicy::with_max_retries(n)` or construct a custom
+`RetryPolicy` directly (max_retries, base_delay, max_delay, backoff_factor).
 
 ### `assert_test` — fail fast
 

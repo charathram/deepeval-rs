@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-07 · After Phase 5 (PR #10)
+> Last updated: 2026-09-07 · After Phase 6 PR A (retry/backoff + cost/token accounting + JSON repair)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -22,7 +22,7 @@ faithfulness, hallucination, etc.).
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | ⏳ planned |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR A merged) |
 
 ## Repository layout
 
@@ -52,7 +52,14 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 - `LlmRequest` / `LlmResponse` / `ChatMessage` / `Role` — provider-agnostic types.
 - `RigProvider<M>` — wraps any rig `CompletionModel` behind `LlmProvider`.
 - `MockLlmProvider` — scripted queue for keyless tests.
-- `extract_json` — parses the first balanced JSON value from prose/code fences.
+- `RetryPolicy` / `RetryProvider<P>` — exponential-backoff retry wrapper around
+  any `LlmProvider`. `RetryPolicy` (max_retries, base_delay, max_delay,
+  backoff_factor) defaults to 3 retries / 200ms base / 8s max / 2.0 factor;
+  `RetryProvider` retries transient errors (`LlmError::Transport` |
+  `LlmError::Provider`).
+- `extract_json` — parses the first balanced JSON value from prose/code fences,
+  with best-effort repair of common LLM mistakes (trailing commas, unquoted
+  keys, single-quoted strings).
 
 ### `metrics` module (`crates/deepeval-rs/src/metrics/`)
 - `Metric` trait — object-safe (`async_trait` + `Send + Sync`). Methods: `name`,
@@ -62,19 +69,24 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   `Metric` but `measure` takes a `ConversationalTestCase`).
 - `MetricConfig` — threshold, include_reason, strict_mode, async_mode, verbose_mode.
 - `MetricResult` — serializable measurement output.
-- `MetricState` — shared in-memory measurement state (config + score/reason/skipped);
-  cloning resets measurement fields so a cloned metric starts fresh.
+- `MetricState` — shared in-memory measurement state (config + score/reason/skipped
+  + cost/input_tokens/output_tokens); cloning resets measurement fields so a
+  cloned metric starts fresh. `accrue_usage(&LlmResponse)` accumulates token
+  counts (saturating) and cost.
 - `impl_metric!` macro — generates the boilerplate `Metric` impl for a metric
-  type exposing a `state: MetricState` field and a `measure_impl` method.
+  type exposing a `state: MetricState` field and a `measure_impl` method. Also
+  generates `cost()`, `input_tokens()`, `output_tokens()` accessors.
 - `impl_conversational_metric!` macro — same, for `ConversationalMetric`.
 - `llm_judge` module — shared LLM-judge flow: validate required fields → render
-  prompt → `provider.complete_structured` → parse `{score, reason}` verdict →
-  clamp score to 0–1.
+  prompt → `provider.complete` → parse `{score, reason}` verdict → clamp score
+  to 0–1. `measure_llm_judge` returns a `MeasureOutcome::Scored { score, reason,
+  usage }` carrying the raw `LlmResponse` so metrics can accrue cost/tokens.
 - **`conversational_llm_judge` module — shared multi-turn LLM-judge flow.
   `measure_conversation_llm_judge(required, provider, registry, class_name,
   method, extra_context, test_case)` returns `Ok(None)` when no turn satisfies
-  all required fields (metric marked skipped), otherwise `Ok(Some(verdict))`
-  with the parsed score and reason. It auto-injects a `dialog` variable and the
+  all required fields (metric marked skipped), otherwise `Ok(Some((verdict,
+  response)))` with the parsed score/reason and the raw `LlmResponse` so metrics
+  can accrue cost/tokens. It auto-injects a `dialog` variable and the
   `turns` field fragments.
 - **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
   `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
@@ -113,7 +125,8 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 - `assert_test` — runs metrics over one test case; returns
   `EvalError::AssertionFailed` if any metric fails.
 - `EvalReport` / `CaseReport` — serializable results with pass/fail/skipped/
-  errored counts.
+  errored counts, plus `total_cost()`, `total_input_tokens()`,
+  `total_output_tokens()` aggregates over all measurements.
 
 ### `error` module (`crates/deepeval-rs/src/error.rs`)
 - `EvalError`, `LlmError`, `MetricError`, `TemplateError` via `thiserror`.
@@ -161,8 +174,13 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   `evaluate_conversational` groups by the first turn's input (empty string when a
   case has no turns).
 - **`conversational_llm_judge::measure_conversation_llm_judge` returns a
-  `Verdict` (score + reason).** Multi-turn metrics record both on their state;
-  `reason` is surfaced when `include_reason` is set.
+  `(Verdict, LlmResponse)` tuple.** Multi-turn metrics record both score and
+  reason on their state and accrue cost/tokens from the response; `reason` is
+  surfaced when `include_reason` is set.
+- **Cost/token accounting:** every LLM-judge metric accrues usage from the raw
+  `LlmResponse` into its `MetricState`. `MetricResult` carries `cost` /
+  `input_tokens` / `output_tokens`, and `EvalReport` aggregates them. Metrics
+  that don't call the LLM (deterministic) report `None`/`0`.
 - **Feature flags** `openai`/`anthropic`/`openai-compatible` are placeholders
   (empty). Concrete provider constructors (e.g. `OpenAIProvider::from_env()`) are
   not yet written — `RigProvider` already supports any rig model, so wiring a
@@ -170,10 +188,11 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 
 ## What's next (Phase 6)
 
-Hardening, GEval logprob scoring, the `deepeval` CLI (`test run`), and full
-examples/docs coverage. The agentic metric required-field lists are not yet
-exposed as user-facing knobs (e.g. choosing which fields per turn) beyond what
-`Turn`/`MultiTurnParams` provide.
+Remaining Phase 6 work: GEval logprob scoring (PR B), the `deepeval` CLI
+`test run` (PR C), and full examples/docs coverage + CHANGELOG (PR D). The
+agentic metric required-field lists are not yet exposed as user-facing knobs
+(e.g. choosing which fields per turn) beyond what `Turn`/`MultiTurnParams`
+provide.
 
 ## Verification commands
 
