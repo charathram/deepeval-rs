@@ -17,9 +17,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .actual_output("We offer a 30-day full refund at no extra costs.")
         .build();
 
-    // The mock replays a canned verdict. A real provider would judge the
-    // output against the criteria below.
-    let provider = MockLlmProvider::text(r#"{"score": 0.9, "reason": "concise and accurate"}"#);
+    // The mock replays a canned verdict. GEval asks the judge for an integer
+    // score in a range (default 0-10) and confidence-weights it against token
+    // log probabilities before normalizing to 0-1. A real provider would judge
+    // the output against the criteria below.
+    let provider = MockLlmProvider::text(r#"{"score": 9, "reason": "concise and accurate"}"#);
 
     let mut metric = GEval::builder()
         .provider(provider)

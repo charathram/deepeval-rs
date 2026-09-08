@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-07 · After Phase 6 PR A (retry/backoff + cost/token accounting + JSON repair)
+> Last updated: 2026-09-07 · After Phase 6 PR B (GEval logprob-based scoring)
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -22,7 +22,7 @@ faithfulness, hallucination, etc.).
 | 3 | Core LLM-judge + deterministic metrics | ✅ merged |
 | 4 | RAG metrics | ✅ merged |
 | 5 | Multi-turn + agentic metrics | ✅ merged |
-| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR A merged) |
+| 6 | Hardening, GEval logprobs, CLI, full examples/docs coverage | 🔄 in progress (PR B merged) |
 
 ## Repository layout
 
@@ -50,7 +50,18 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   between metrics and rig. Methods: `model_name`, `complete`,
   `complete_structured` (default = prompt-based JSON + extractor).
 - `LlmRequest` / `LlmResponse` / `ChatMessage` / `Role` — provider-agnostic types.
-- `RigProvider<M>` — wraps any rig `CompletionModel` behind `LlmProvider`.
+  `LlmRequest` has an optional `top_logprobs` (via `with_top_logprobs`) that
+  asks the provider for per-token log probabilities; `LlmResponse` carries them
+  in an optional `logprobs: Vec<TokenLogprobs>` (via `with_logprobs`).
+- `TokenLogprob` / `TokenLogprobs` — normalized per-token log-probability types.
+- `RigProvider<M>` — wraps any rig `CompletionModel` behind `LlmProvider`. When
+  `top_logprobs` is set it forwards OpenAI-compatible `logprobs`/`top_logprobs`
+  request params via rig's `additional_params` and extracts log probabilities
+  from the raw response (`choices[0].logprobs.content`).
+- `extract_logprobs` — parses the OpenAI wire-format log-probability payload
+  into a `Vec<TokenLogprobs>`.
+- `calculate_weighted_summed_score` — confidence-weights a raw integer score
+  against token log probabilities (mirroring deepeval's g-eval fix).
 - `MockLlmProvider` — scripted queue for keyless tests.
 - `RetryPolicy` / `RetryProvider<P>` — exponential-backoff retry wrapper around
   any `LlmProvider`. `RetryPolicy` (max_retries, base_delay, max_delay,
@@ -81,6 +92,8 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   prompt → `provider.complete` → parse `{score, reason}` verdict → clamp score
   to 0–1. `measure_llm_judge` returns a `MeasureOutcome::Scored { score, reason,
   usage }` carrying the raw `LlmResponse` so metrics can accrue cost/tokens.
+  `measure_geval` is a GEval-specific variant that requests log probabilities,
+  confidence-weights the raw integer score, and normalizes to 0–1.
 - **`conversational_llm_judge` module — shared multi-turn LLM-judge flow.
   `measure_conversation_llm_judge(required, provider, registry, class_name,
   method, extra_context, test_case)` returns `Ok(None)` when no turn satisfies
@@ -88,7 +101,8 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   response)))` with the parsed score/reason and the raw `LlmResponse` so metrics
   can accrue cost/tokens. It auto-injects a `dialog` variable and the
   `turns` field fragments.
-- **LLM-judge metrics:** `GEval` (simplified CoT), `AnswerRelevancyMetric`,
+- **LLM-judge metrics:** `GEval` (logprob-weighted integer score, default range
+  0–10 via `score_range`), `AnswerRelevancyMetric`,
   `FaithfulnessMetric`, `HallucinationMetric`, `PromptAlignmentMetric`.
 - **RAG metrics (LLM-judge):** `ContextualPrecisionMetric`,
   `ContextualRecallMetric`, `ContextualRelevancyMetric`, and the composite
@@ -136,7 +150,9 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 
 ## Key decisions (locked)
 
-1. **GEval:** ship a simplified CoT version now; add logprob-based scoring in Phase 6.
+1. **GEval:** logprob-based scoring (Phase 6 PR B). The judge returns an integer
+   score in a range (default 0–10); the raw score is confidence-weighted against
+   token log probabilities and normalized to 0–1.
 2. **Metric ergonomics:** faithful to deepeval — `measure(&mut self, ...)` stores
    results on the metric; metrics are cloned per `(test_case, metric)` pair.
 3. **Providers:** OpenAI + Anthropic + a generic OpenAI-compatible base-URL client.
@@ -181,6 +197,14 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
   `LlmResponse` into its `MetricState`. `MetricResult` carries `cost` /
   `input_tokens` / `output_tokens`, and `EvalReport` aggregates them. Metrics
   that don't call the LLM (deterministic) report `None`/`0`.
+- **GEval logprob scoring:** the judge is asked for an integer score in a range
+  (default 0–10, configurable via `score_range`). The request sets
+  `top_logprobs`; `calculate_weighted_summed_score` finds the last generated
+  token equal to `str(raw_score)`, filters its `top_logprobs` to decimal tokens
+  with logprob ≥ `ln(0.01)`, and returns a probability-weighted sum (falling
+  back to the raw score if nothing survives). The result is normalized to 0–1.
+  Providers that don't return logprobs (e.g. `MockLlmProvider`) fall back to
+  the raw score.
 - **Feature flags** `openai`/`anthropic`/`openai-compatible` are placeholders
   (empty). Concrete provider constructors (e.g. `OpenAIProvider::from_env()`) are
   not yet written — `RigProvider` already supports any rig model, so wiring a
@@ -188,11 +212,10 @@ docs/            # usage guides (getting-started.md, cli.md, README.md)
 
 ## What's next (Phase 6)
 
-Remaining Phase 6 work: GEval logprob scoring (PR B), the `deepeval` CLI
-`test run` (PR C), and full examples/docs coverage + CHANGELOG (PR D). The
-agentic metric required-field lists are not yet exposed as user-facing knobs
-(e.g. choosing which fields per turn) beyond what `Turn`/`MultiTurnParams`
-provide.
+Remaining Phase 6 work: the `deepeval` CLI `test run` (PR C), and full
+examples/docs coverage + CHANGELOG (PR D). The agentic metric required-field
+lists are not yet exposed as user-facing knobs (e.g. choosing which fields per
+turn) beyond what `Turn`/`MultiTurnParams` provide.
 
 ## Verification commands
 

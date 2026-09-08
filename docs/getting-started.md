@@ -78,14 +78,16 @@ let metric = AnswerRelevancyMetric::builder()
     .build();
 ```
 
-`GEval` additionally requires `criteria` describing what to evaluate:
+`GEval` additionally requires `criteria` describing what to evaluate. It asks
+the judge for an integer score in a range (default 0–10) and confidence-weights
+it against token log probabilities before normalizing to 0–1:
 
 ```rust
 use deepeval_rs::llm::MockLlmProvider;
 use deepeval_rs::metrics::GEval;
 
 let metric = GEval::builder()
-    .provider(MockLlmProvider::text(r#"{"score": 0.8}"#))
+    .provider(MockLlmProvider::text(r#"{"score": 8}"#))
     .criteria("The answer is concise and accurate.")
     .threshold(0.7)
     .build();
