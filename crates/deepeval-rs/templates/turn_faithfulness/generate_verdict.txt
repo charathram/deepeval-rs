@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine whether each assistant response stays grounded in its retrieval context. A response is faithful only when every claim it makes is supported by that turn's retrieval context.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating overall faithfulness (1.0 = fully faithful, 0.0 = contains unsupported claims).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine how accurately the assistant achieved the conversation's stated goal.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating goal accuracy (1.0 = goal fully achieved as intended, 0.0 = goal missed entirely).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

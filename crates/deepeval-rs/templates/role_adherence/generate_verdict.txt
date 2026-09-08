@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine how well the assistant stays in its assigned role and does not stray into behavior that contradicts the persona or task.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating role adherence (1.0 = fully in-role, 0.0 = completely out of role).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

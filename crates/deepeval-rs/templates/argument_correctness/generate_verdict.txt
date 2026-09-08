@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine the logical correctness of the assistant's reasoning and arguments.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating argument correctness (1.0 = sound reasoning, 0.0 = fallacious or incorrect).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.

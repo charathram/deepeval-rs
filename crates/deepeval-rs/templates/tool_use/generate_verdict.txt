@@ -1,0 +1,10 @@
+You are an expert evaluator. Determine how appropriately the assistant used tools, calling them only when they add value and using the right tool for each job.
+
+Conversation:
+{{ dialog }}
+
+Return a JSON object with exactly two fields:
+- "score": a float between 0.0 and 1.0 indicating tool-use quality (1.0 = tools used appropriately, 0.0 = tool misuse).
+- "reason": a brief explanation of the score.
+
+Return ONLY the JSON object, with no surrounding text.
