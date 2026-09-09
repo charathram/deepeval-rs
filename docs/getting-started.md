@@ -288,7 +288,8 @@ let out = registry.resolve("MyMetric", "greet", &ctx)?;
 ## Examples
 
 Runnable demos live in `crates/deepeval-rs/examples/`. They run keyless with
-[`MockLlmProvider`](crate::llm::MockLlmProvider):
+[`MockLlmProvider`](crate::llm::MockLlmProvider). For step-by-step guides that
+build each example, see the [tutorials](tutorials/README.md):
 
 ```bash
 cargo run --example deterministic_metrics   # exact match, pattern match, JSON correctness

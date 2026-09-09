@@ -11,6 +11,8 @@ hallucination. Metrics run asynchronously and can be composed into an
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — how to use the library.
+- [Tutorials](docs/tutorials/README.md) — step-by-step guides that build each
+  of the examples.
 - [The `deepeval` CLI](docs/cli.md) — the command-line tool.
 - [Docs index](docs/README.md).
 - [Changelog](CHANGELOG.md) — release history.
