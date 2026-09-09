@@ -36,8 +36,7 @@ pull request.
 
 ```
 crates/
-  deepeval-rs/   # the library
-  deepeval/      # the `deepeval` CLI (`test run` implemented in Phase 6)
+  deepeval-rs/   # the library + the `deepeval` CLI binary (feature-gated)
 ```
 
 ## What's implemented so far
@@ -300,13 +299,21 @@ The release workflow (`.github/workflows/release.yml`) runs on every `v*` tag
 push and does three things:
 
 1. **Publish to crates.io** — runs fmt/clippy/test, then `cargo publish` for
-   `deepeval-rs` followed by `deepeval`, using the `CRATES_IO_KEY` repository
-   secret as the registry token.
+   `deepeval-rs` (the single published crate), using the `CRATES_IO_KEY`
+   repository secret as the registry token.
 2. **Build downloadable binaries** — a matrix over macOS arm64, macOS x86_64,
-   Linux x86_64, and Windows x86_64, packaging the `deepeval` CLI binary and the
-   compiled `libdeepeval_rs.rlib` library artifact into a per-platform archive.
+   Linux x86_64, and Windows x86_64, building `deepeval-rs` with the `cli`
+   feature and packaging the `deepeval` CLI binary and the compiled
+   `libdeepeval_rs.rlib` library artifact into a per-platform archive.
 3. **Create a GitHub Release** — attaches every platform archive to a release
    for the tag.
+
+The `deepeval` CLI is a binary target inside the `deepeval-rs` crate, gated
+behind the `cli` feature. Build it locally with:
+
+```bash
+cargo build -p deepeval-rs --features cli
+```
 
 ## License
 

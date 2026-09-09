@@ -6,10 +6,11 @@ deepeval's Python CLI runs `deepeval test run`.
 
 ## Building the CLI
 
-The CLI lives in the `crates/deepeval` crate. Build it from the workspace root:
+The CLI is a binary target inside the `deepeval-rs` crate, gated behind the
+`cli` feature. Build it from the workspace root:
 
 ```bash
-cargo build -p deepeval
+cargo build -p deepeval-rs --features cli
 ```
 
 The binary is named `deepeval`.

@@ -12,8 +12,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Publish both crates to crates.io. The library must be published before the
-  # CLI, which depends on it.
+  # Publish the single `deepeval-rs` crate to crates.io.
   publish:
     name: Publish to crates.io
     runs-on: ubuntu-latest
@@ -52,9 +51,6 @@ jobs:
 
       - name: Publish deepeval-rs
         run: cargo publish -p deepeval-rs --token "${{ secrets.CRATES_IO_KEY }}"
-
-      - name: Publish deepeval
-        run: cargo publish -p deepeval --token "${{ secrets.CRATES_IO_KEY }}"
 
   # Build the CLI binary and the compiled library artifact for each platform
   # and bundle them into a downloadable archive.
@@ -98,7 +94,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Build release binaries
-        run: cargo build --release -p deepeval -p deepeval-rs
+        run: cargo build --release -p deepeval-rs --features cli
 
       - name: Package archive
         shell: ${{ matrix.shell }}

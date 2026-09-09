@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that bumps the workspace version, updates the CHANGELOG, refreshes
   `Cargo.lock`, commits, tags `vX.Y.Z`, and pushes the tag. A GitHub Actions
   workflow (`.github/workflows/release.yml`) triggered on `v*` tag pushes
-  publishes both crates to crates.io (using the `CRATES_IO_KEY` secret) and
-  attaches per-platform archives (CLI binary + library rlib) to a GitHub
-  Release. See the "Releasing" section of the README.
+  publishes the `deepeval-rs` crate to crates.io (using the `CRATES_IO_KEY`
+  secret) and attaches per-platform archives (CLI binary + library rlib) to a
+  GitHub Release. The `deepeval` CLI is now a binary target inside the
+  `deepeval-rs` crate (gated behind the `cli` feature), so `deepeval-rs` is the
+  single published crate. See the "Releasing" section of the README.
 - **`deepeval` CLI `test run`** — run a YAML test suite from the terminal and
   print a pass/fail report. Supports deterministic and single-turn LLM-judge
   metrics. See `docs/cli.md`.
