@@ -117,6 +117,50 @@ fn set_workspace_version(cargo_toml: &str, new_version: &str) -> String {
     out
 }
 
+/// Set the `version` field of a path dependency (e.g. `deepeval-rs`) in a
+/// crate manifest, so the published dependency resolves on crates.io.
+fn set_dep_version(manifest: &str, dep: &str, new_version: &str) -> String {
+    let mut out = String::new();
+    for line in manifest.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with(&format!("{dep} = {{")) {
+            let open = line.find('{').unwrap_or(0);
+            let close = line.rfind('}').unwrap_or(line.len());
+            let inner = &line[open + 1..close];
+            let leading = inner.len() - inner.trim_start().len();
+            let trailing = inner.len() - inner.trim_end().len();
+            let mut fields: Vec<String> = Vec::new();
+            for part in inner.split(',') {
+                let part = part.trim();
+                if part.is_empty() {
+                    continue;
+                }
+                if part.starts_with("version = ") {
+                    fields.push(format!("version = \"{new_version}\""));
+                } else {
+                    fields.push(part.to_string());
+                }
+            }
+            if !fields.iter().any(|f| f.starts_with("version = ")) {
+                fields.push(format!("version = \"{new_version}\""));
+            }
+            let prefix = &line[..open];
+            let suffix = &line[close + 1..];
+            let pad_lead = " ".repeat(leading);
+            let pad_trail = " ".repeat(trailing);
+            out.push_str(&format!(
+                "{prefix}{{{pad_lead}{}{pad_trail}}}{suffix}",
+                fields.join(", ")
+            ));
+            out.push('\n');
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
 /// Move the `[Unreleased]` body into a new `[X.Y.Z] - <date>` section.
 fn update_changelog(changelog: &str, new_version: &str, date: &str) -> Result<String, String> {
     let marker = "## [Unreleased]";
@@ -178,6 +222,7 @@ fn main() -> Result<(), String> {
     let root = std::env::current_dir().map_err(|e| e.to_string())?;
     let cargo_toml_path = root.join("Cargo.toml");
     let changelog_path = root.join("CHANGELOG.md");
+    let cli_manifest_path = root.join("crates/deepeval/Cargo.toml");
 
     let cargo_toml = std::fs::read_to_string(&cargo_toml_path)
         .map_err(|e| format!("failed to read Cargo.toml: {e}"))?;
@@ -205,7 +250,7 @@ fn main() -> Result<(), String> {
     println!("Date:             {date}");
 
     if cli.dry_run {
-        println!("\n[dry-run] would update Cargo.toml, CHANGELOG.md, and Cargo.lock;");
+        println!("\n[dry-run] would update Cargo.toml, crates/deepeval/Cargo.toml, CHANGELOG.md, and Cargo.lock;");
         println!("[dry-run] commit `chore: release {tag}`, tag `{tag}`, and push `{branch}` + `{tag}`.");
         return Ok(());
     }
@@ -214,6 +259,14 @@ fn main() -> Result<(), String> {
     let new_cargo_toml = set_workspace_version(&cargo_toml, &new);
     std::fs::write(&cargo_toml_path, new_cargo_toml)
         .map_err(|e| format!("failed to write Cargo.toml: {e}"))?;
+
+    // 1b. Keep the CLI's path dependency on the library in sync so it resolves
+    // on crates.io.
+    let cli_manifest = std::fs::read_to_string(&cli_manifest_path)
+        .map_err(|e| format!("failed to read crates/deepeval/Cargo.toml: {e}"))?;
+    let new_cli_manifest = set_dep_version(&cli_manifest, "deepeval-rs", &new);
+    std::fs::write(&cli_manifest_path, new_cli_manifest)
+        .map_err(|e| format!("failed to write crates/deepeval/Cargo.toml: {e}"))?;
 
     // 2. Move Unreleased entries into the new version section.
     let changelog = std::fs::read_to_string(&changelog_path)
@@ -232,7 +285,13 @@ fn main() -> Result<(), String> {
     }
 
     // 4. Commit the version bump.
-    git(&["add", "Cargo.toml", "CHANGELOG.md", "Cargo.lock"])?;
+    git(&[
+        "add",
+        "Cargo.toml",
+        "CHANGELOG.md",
+        "Cargo.lock",
+        "crates/deepeval/Cargo.toml",
+    ])?;
     git(&["commit", "-m", &format!("chore: release {tag}")])?;
 
     // 5. Tag and push (the tag triggers the release workflow).
@@ -275,6 +334,17 @@ mod tests {
         let updated = set_workspace_version(toml, "0.2.0");
         assert_eq!(read_workspace_version(&updated).unwrap(), "0.2.0");
         assert!(updated.contains("version = \"0.2.0\""));
+    }
+
+    #[test]
+    fn sets_dep_version() {
+        let manifest = "[dependencies]\ndeepeval-rs = { path = \"../deepeval-rs\", features = [\"cli\"] }\ntokio.workspace = true\n";
+        let updated = set_dep_version(manifest, "deepeval-rs", "0.2.0");
+        assert!(updated.contains("deepeval-rs = { path = \"../deepeval-rs\", features = [\"cli\"], version = \"0.2.0\" }"));
+        // A second run updates the existing version rather than duplicating it.
+        let updated2 = set_dep_version(&updated, "deepeval-rs", "0.3.0");
+        assert_eq!(updated2.matches("version = \"0.3.0\"").count(), 1);
+        assert!(updated2.contains("version = \"0.3.0\""));
     }
 
     #[test]
