@@ -50,7 +50,9 @@ jobs:
         run: cargo test --all-features
 
       - name: Publish deepeval-rs
-        run: cargo publish -p deepeval-rs --token "${{ secrets.CRATES_IO_KEY }}"
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_KEY }}
+        run: cargo publish -p deepeval-rs
 
   # Build the CLI binary and the compiled library artifact for each platform
   # and bundle them into a downloadable archive.
