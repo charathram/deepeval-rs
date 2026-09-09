@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/deepeval-rs",
-    "crates/deepeval",
+    "crates/release",
 ]
 
 [workspace.package]

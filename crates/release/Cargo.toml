@@ -1,0 +1,13 @@
+[package]
+name = "release"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Internal release tool: bump the version, tag, and push a release."
+publish = false
+
+[dependencies]
+clap.workspace = true

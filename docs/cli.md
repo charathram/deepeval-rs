@@ -6,10 +6,11 @@ deepeval's Python CLI runs `deepeval test run`.
 
 ## Building the CLI
 
-The CLI lives in the `crates/deepeval` crate. Build it from the workspace root:
+The CLI is a binary target inside the `deepeval-rs` crate, gated behind the
+`cli` feature. Build it from the workspace root:
 
 ```bash
-cargo build -p deepeval
+cargo build -p deepeval-rs --features cli
 ```
 
 The binary is named `deepeval`.
@@ -93,6 +94,24 @@ The CLI reads the same environment variables as the library:
 - `OPENAI_API_KEY` — for the OpenAI provider.
 - `ANTHROPIC_API_KEY` — for the Anthropic provider.
 - `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL` — optional custom base URLs.
+
+## Releasing
+
+Releases are driven by a `cargo release` command (an in-repo xtask in
+`crates/release/`, registered as a cargo alias). It bumps the workspace
+version, updates the CHANGELOG, refreshes `Cargo.lock`, commits, tags
+`vX.Y.Z`, and pushes the tag, which auto-triggers the release workflow in
+GitHub Actions (publish to crates.io + downloadable binaries + GitHub Release).
+
+```bash
+cargo release patch   # 0.1.0 -> 0.1.1
+cargo release minor   # 0.1.0 -> 0.2.0
+cargo release major   # 0.1.0 -> 1.0.0
+cargo release 0.3.0   # exact version
+cargo release patch --dry-run   # preview without committing/pushing
+```
+
+See the "Releasing" section of the README for details.
 
 ## Roadmap
 

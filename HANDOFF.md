@@ -1,6 +1,6 @@
 # Handoff Document
 
-> Last updated: 2026-09-08 · After Phase 6 PR D (examples, docs, CHANGELOG) + example tutorials
+> Last updated: 2026-09-08 · After Phase 6 PR D (examples, docs, CHANGELOG) + example tutorials + release pipeline
 
 This document captures the current state of the `deepeval-rs` project so a new
 developer (or a future agent session) can pick up where the work left off.
@@ -29,12 +29,15 @@ faithfulness, hallucination, etc.).
 ```
 crates/
   deepeval-rs/   # the library (crate name: deepeval-rs, import path: deepeval_rs)
-  deepeval/      # the `deepeval` CLI (`test run` implemented in Phase 6)
+                 #   + the `deepeval` CLI binary (feature-gated behind `cli`)
+  release/       # the `cargo release` xtask (version bump + tag + push)
 docs/            # usage guides (getting-started.md, cli.md, README.md)
 docs/tutorials/  # step-by-step tutorials that build each example (01-07)
 .github/
   prompts/plan-deepevalRs.prompt.md   # the original implementation plan
   workflows/ci.yml                   # fmt + clippy + test
+  workflows/release.yml              # publish to crates.io + build binaries + GitHub Release
+.cargo/config.toml                  # cargo alias: `release = run --release --package release --`
 ```
 
 ## What's implemented (as of Phase 5)
@@ -220,6 +223,16 @@ runnable examples per metric family, real-provider examples using the new
 `OpenAIProvider`/`AnthropicProvider` constructors, a `CHANGELOG.md`, and
 updated docs. A `docs/tutorials/` series (01-07) now walks through building
 each example as a progressive curriculum.
+
+A release pipeline is now in place: `cargo release <major|minor|patch|X.Y.Z>`
+bumps the workspace version, updates the CHANGELOG, refreshes `Cargo.lock`,
+commits, tags `vX.Y.Z`, and pushes the tag. The `.github/workflows/release.yml`
+workflow (triggered on `v*` tag pushes) publishes the single `deepeval-rs`
+crate to crates.io using the `CRATES_IO_KEY` secret and attaches per-platform
+archives (CLI binary + library rlib) to a GitHub Release. The `deepeval` CLI
+is a binary target inside the `deepeval-rs` crate, gated behind the `cli`
+feature (build with `cargo build -p deepeval-rs --features cli`). See the
+"Releasing" section of the README.
 
 Possible follow-ups: expose the agentic metric required-field lists as
 user-facing knobs (e.g. choosing which fields per turn) beyond what
