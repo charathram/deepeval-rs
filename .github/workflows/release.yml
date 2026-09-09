@@ -102,12 +102,13 @@ jobs:
           $archive = "deepeval-$version-${{ matrix.target }}.${{ matrix.archive }}"
           if ("${{ matrix.os }}" -like "windows-*") {
             $bin = "deepeval.exe"
-            $rlib = "deepeval_rs.rlib"
           } else {
             $bin = "deepeval"
-            $rlib = "libdeepeval_rs.rlib"
           }
           Push-Location target/release
+          # The rlib filename differs by platform (libdeepeval_rs.rlib on
+          # Unix, deepeval_rs.rlib on Windows), so discover it dynamically.
+          $rlib = (Get-ChildItem -Path . -Filter "*.rlib" | Select-Object -First 1).Name
           if ("${{ matrix.archive }}" -eq "zip") {
             Compress-Archive -Path $bin, $rlib -DestinationPath $archive
           } else {
