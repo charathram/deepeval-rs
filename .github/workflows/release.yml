@@ -15,6 +15,7 @@ jobs:
   # Publish the single `deepeval-rs` crate to crates.io.
   publish:
     name: Publish to crates.io
+    needs: [binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
