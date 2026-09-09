@@ -301,8 +301,8 @@ push and does three things:
 1. **Publish to crates.io** — runs fmt/clippy/test, then `cargo publish` for
    `deepeval-rs` (the single published crate), using the `CRATES_IO_KEY`
    repository secret as the registry token.
-2. **Build downloadable binaries** — a matrix over macOS arm64, macOS x86_64,
-   Linux x86_64, and Windows x86_64, building `deepeval-rs` with the `cli`
+2. **Build downloadable binaries** — a matrix over macOS arm64, Linux x86_64,
+   and Windows x86_64, building `deepeval-rs` with the `cli`
    feature and packaging the `deepeval` CLI binary and the compiled
    `libdeepeval_rs.rlib` library artifact into a per-platform archive.
 3. **Create a GitHub Release** — attaches every platform archive to a release
