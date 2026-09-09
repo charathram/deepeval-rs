@@ -1,6 +1,6 @@
 # deepeval-rs
 
-The LLM evaluation framework for Rust — a port of
+The LLM evaluation framework for Rust — a ground-up rewrite of
 [deepeval](https://github.com/confident-ai/deepeval).
 
 deepeval-rs lets you evaluate LLM applications (agents, RAG pipelines, chatbots)
