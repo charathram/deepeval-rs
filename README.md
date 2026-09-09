@@ -273,6 +273,41 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
+## Releasing
+
+Releases are driven by a custom `cargo release` command (an in-repo xtask
+binary in `crates/release/`, registered as a cargo alias in `.cargo/config.toml`).
+It bumps the workspace version, updates the CHANGELOG, refreshes `Cargo.lock`,
+commits, tags `vX.Y.Z`, and pushes the tag — which auto-triggers the release
+workflow in GitHub Actions.
+
+```bash
+# Bump the patch version (0.1.0 -> 0.1.1), tag, and push.
+cargo release patch
+
+# Bump minor (0.1.0 -> 0.2.0) or major (0.1.0 -> 1.0.0).
+cargo release minor
+cargo release major
+
+# Or specify an exact semver version.
+cargo release 0.3.0
+
+# Preview what a release would do without committing or pushing.
+cargo release patch --dry-run
+```
+
+The release workflow (`.github/workflows/release.yml`) runs on every `v*` tag
+push and does three things:
+
+1. **Publish to crates.io** — runs fmt/clippy/test, then `cargo publish` for
+   `deepeval-rs` followed by `deepeval`, using the `CRATES_IO_KEY` repository
+   secret as the registry token.
+2. **Build downloadable binaries** — a matrix over macOS arm64, macOS x86_64,
+   Linux x86_64, and Windows x86_64, packaging the `deepeval` CLI binary and the
+   compiled `libdeepeval_rs.rlib` library artifact into a per-platform archive.
+3. **Create a GitHub Release** — attaches every platform archive to a release
+   for the tag.
+
 ## License
 
 Apache-2.0
