@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "The LLM evaluation framework for Rust — a port of deepeval."
+readme = "../../README.md"
 keywords = ["llm", "evaluation", "metrics", "testing", "ai"]
 categories = ["development-tools::testing", "artificial-intelligence"]
 autobins = false
