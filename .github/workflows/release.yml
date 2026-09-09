@@ -64,19 +64,15 @@ jobs:
           - os: macos-14
             target: aarch64-apple-darwin
             archive: tar.gz
-            shell: bash
           - os: macos-13
             target: x86_64-apple-darwin
             archive: tar.gz
-            shell: bash
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
-            shell: bash
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: zip
-            shell: pwsh
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +93,7 @@ jobs:
         run: cargo build --release -p deepeval-rs --features cli
 
       - name: Package archive
-        shell: ${{ matrix.shell }}
+        shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
           $archive = "deepeval-$version-${{ matrix.target }}.${{ matrix.archive }}"
