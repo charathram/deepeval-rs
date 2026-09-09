@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-08
+
 ### Added
 
 - **Release pipeline** — a `cargo release` command (xtask in `crates/release/`)
@@ -54,8 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Runnable examples** — one demo per metric family (deterministic,
   LLM-judge, GEval, RAGAS, multi-turn) plus real-provider examples for OpenAI
   and Anthropic.
-
-## [0.1.0] - 2026-09-06
 
 Initial workspace scaffold: error types, CI, and the `deepeval-rs` library
 crate with the `deepeval` CLI stub.
