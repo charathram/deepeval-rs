@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Publish both crates to crates.io. The library must be published before the
+  # CLI, which depends on it.
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Check formatting
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo test --all-features
+
+      - name: Publish deepeval-rs
+        run: cargo publish -p deepeval-rs --token "${{ secrets.CRATES_IO_KEY }}"
+
+      - name: Publish deepeval
+        run: cargo publish -p deepeval --token "${{ secrets.CRATES_IO_KEY }}"
+
+  # Build the CLI binary and the compiled library artifact for each platform
+  # and bundle them into a downloadable archive.
+  binaries:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+            shell: bash
+          - os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+            shell: bash
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+            shell: bash
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+            shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build release binaries
+        run: cargo build --release -p deepeval -p deepeval-rs
+
+      - name: Package archive
+        shell: ${{ matrix.shell }}
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $archive = "deepeval-$version-${{ matrix.target }}.${{ matrix.archive }}"
+          if ("${{ matrix.os }}" -like "windows-*") {
+            $bin = "deepeval.exe"
+            $rlib = "deepeval_rs.rlib"
+          } else {
+            $bin = "deepeval"
+            $rlib = "libdeepeval_rs.rlib"
+          }
+          Push-Location target/release
+          if ("${{ matrix.archive }}" -eq "zip") {
+            Compress-Archive -Path $bin, $rlib -DestinationPath $archive
+          } else {
+            tar -czf $archive $bin $rlib
+          }
+          Pop-Location
+          Move-Item "target/release/$archive" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: deepeval-*.${{ matrix.archive }}
+          if-no-files-found: error
+
+  # Assemble a GitHub Release from the per-platform archives.
+  release:
+    name: Create GitHub Release
+    needs: [publish, binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

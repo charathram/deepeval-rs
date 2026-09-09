@@ -1,0 +1,3 @@
+[alias]
+# `cargo release <major|minor|patch|X.Y.Z>` bumps the version, tags, and pushes.
+release = "run --release --package release --"
