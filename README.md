@@ -288,8 +288,9 @@ cargo release patch
 cargo release minor
 cargo release major
 
-# Or specify an exact semver version.
+# Or specify an exact semver version (optionally a prerelease).
 cargo release 0.3.0
+cargo release 0.1.1-alpha
 
 # Preview what a release would do without committing or pushing.
 cargo release patch --dry-run

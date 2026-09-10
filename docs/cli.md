@@ -108,6 +108,7 @@ cargo release patch   # 0.1.0 -> 0.1.1
 cargo release minor   # 0.1.0 -> 0.2.0
 cargo release major   # 0.1.0 -> 1.0.0
 cargo release 0.3.0   # exact version
+cargo release 0.1.1-alpha   # exact prerelease version
 cargo release patch --dry-run   # preview without committing/pushing
 ```
 

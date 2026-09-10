@@ -225,7 +225,8 @@ updated docs. A `docs/tutorials/` series (01-07) now walks through building
 each example as a progressive curriculum.
 
 A release pipeline is now in place: `cargo release <major|minor|patch|X.Y.Z>`
-bumps the workspace version, updates the CHANGELOG, refreshes `Cargo.lock`,
+(optionally with a `-prerelease` suffix, e.g. `0.1.1-alpha`) bumps the
+workspace version, updates the CHANGELOG, refreshes `Cargo.lock`,
 commits, tags `vX.Y.Z`, and pushes the tag. The `.github/workflows/release.yml`
 workflow (triggered on `v*` tag pushes) publishes the single `deepeval-rs`
 crate to crates.io using the `CRATES_IO_KEY` secret and attaches per-platform

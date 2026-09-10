@@ -11,6 +11,7 @@
 //! cargo release minor          # 0.1.0 -> 0.2.0
 //! cargo release patch          # 0.1.0 -> 0.1.1
 //! cargo release 1.2.3          # explicit version
+//! cargo release 0.1.1-alpha    # explicit prerelease version
 //! cargo release patch --dry-run  # preview without committing or pushing
 //! ```
 
@@ -22,7 +23,8 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[command(name = "release", about = "Bump the version, tag, and push a release")]
 struct Cli {
-    /// `major`, `minor`, `patch`, or an explicit semver like `1.2.3`.
+    /// `major`, `minor`, `patch`, or an explicit semver like `1.2.3`
+    /// (optionally with a `-prerelease` suffix, e.g. `0.1.1-alpha`).
     bump: String,
 
     /// Print what would happen without committing or pushing.
@@ -38,18 +40,39 @@ enum Bump {
     Exact(String),
 }
 
+/// Whether `s` is a valid semver version: `X.Y.Z` optionally followed by a
+/// `-prerelease` suffix (e.g. `0.1.1-alpha`).
+fn is_valid_version(s: &str) -> bool {
+    let (core, pre) = match s.split_once('-') {
+        Some((c, p)) => (c, Some(p)),
+        None => (s, None),
+    };
+    let parts: Vec<&str> = core.split('.').collect();
+    if parts.len() != 3 || !parts.iter().all(|p| p.parse::<u64>().is_ok()) {
+        return false;
+    }
+    match pre {
+        None => true,
+        Some(p) => {
+            !p.is_empty()
+                && p.split('.').all(|id| {
+                    !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                })
+        }
+    }
+}
+
 fn parse_bump(s: &str) -> Result<Bump, String> {
     match s {
         "major" => Ok(Bump::Major),
         "minor" => Ok(Bump::Minor),
         "patch" => Ok(Bump::Patch),
         _ => {
-            let parts: Vec<&str> = s.split('.').collect();
-            if parts.len() == 3 && parts.iter().all(|p| p.parse::<u64>().is_ok()) {
+            if is_valid_version(s) {
                 Ok(Bump::Exact(s.to_string()))
             } else {
                 Err(format!(
-                    "invalid bump `{s}`: expected `major`, `minor`, `patch`, or `X.Y.Z`"
+                    "invalid bump `{s}`: expected `major`, `minor`, `patch`, or `X.Y.Z` (optionally with a `-prerelease` suffix)"
                 ))
             }
         }
@@ -57,7 +80,9 @@ fn parse_bump(s: &str) -> Result<Bump, String> {
 }
 
 fn next_version(current: &str, bump: &Bump) -> Result<String, String> {
-    let parts: Vec<u64> = current
+    // Strip any `-prerelease` suffix so the numeric core parses cleanly.
+    let core = current.split_once('-').map(|(c, _)| c).unwrap_or(current);
+    let parts: Vec<u64> = core
         .split('.')
         .map(|p| {
             p.parse::<u64>()
@@ -260,8 +285,18 @@ mod tests {
         assert_eq!(parse_bump("minor").unwrap(), Bump::Minor);
         assert_eq!(parse_bump("patch").unwrap(), Bump::Patch);
         assert_eq!(parse_bump("1.2.3").unwrap(), Bump::Exact("1.2.3".into()));
+        assert_eq!(
+            parse_bump("0.1.1-alpha").unwrap(),
+            Bump::Exact("0.1.1-alpha".into())
+        );
+        assert_eq!(
+            parse_bump("1.2.3-rc.1").unwrap(),
+            Bump::Exact("1.2.3-rc.1".into())
+        );
         assert!(parse_bump("bogus").is_err());
         assert!(parse_bump("1.2").is_err());
+        assert!(parse_bump("1.2.3-").is_err());
+        assert!(parse_bump("1.2.3-alpha!").is_err());
     }
 
     #[test]
@@ -272,6 +307,15 @@ mod tests {
         assert_eq!(
             next_version("1.2.3", &Bump::Exact("2.0.0".into())).unwrap(),
             "2.0.0"
+        );
+        assert_eq!(
+            next_version("0.1.1", &Bump::Exact("0.1.1-alpha".into())).unwrap(),
+            "0.1.1-alpha"
+        );
+        // A patch bump from a prerelease drops the prerelease suffix.
+        assert_eq!(
+            next_version("0.1.1-alpha", &Bump::Patch).unwrap(),
+            "0.1.2"
         );
         assert!(next_version("not-a-version", &Bump::Patch).is_err());
     }
