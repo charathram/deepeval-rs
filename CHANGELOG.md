@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2-alpha] - 2026-09-10
+
 ### Added
 
 - **Prerelease support in `cargo release`** — the release tool now accepts an
   explicit semver with a `-prerelease` suffix (e.g. `cargo release 0.1.1-alpha`),
   so pre-release versions can be published to crates.io.
+
 
 ## [0.1.1] - 2026-09-08
 
