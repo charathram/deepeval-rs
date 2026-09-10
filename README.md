@@ -10,12 +10,12 @@ hallucination. Metrics run asynchronously and can be composed into an
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — how to use the library.
-- [Tutorials](docs/tutorials/README.md) — step-by-step guides that build each
+- [Getting Started](https://github.com/charathram/deepeval-rs/blob/main/docs/getting-started.md) — how to use the library.
+- [Tutorials](https://github.com/charathram/deepeval-rs/blob/main/docs/tutorials/README.md) — step-by-step guides that build each
   of the examples.
-- [The `deepeval` CLI](docs/cli.md) — the command-line tool.
-- [Docs index](docs/README.md).
-- [Changelog](CHANGELOG.md) — release history.
+- [The `deepeval` CLI](https://github.com/charathram/deepeval-rs/blob/main/docs/cli.md) — the command-line tool.
+- [Docs index](https://github.com/charathram/deepeval-rs/blob/main/docs/README.md).
+- [Changelog](https://github.com/charathram/deepeval-rs/blob/main/CHANGELOG.md) — release history.
 
 ## Status
 
