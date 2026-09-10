@@ -313,10 +313,7 @@ mod tests {
             "0.1.1-alpha"
         );
         // A patch bump from a prerelease drops the prerelease suffix.
-        assert_eq!(
-            next_version("0.1.1-alpha", &Bump::Patch).unwrap(),
-            "0.1.2"
-        );
+        assert_eq!(next_version("0.1.1-alpha", &Bump::Patch).unwrap(), "0.1.2");
         assert!(next_version("not-a-version", &Bump::Patch).is_err());
     }
 
