@@ -216,4 +216,17 @@ mod tests {
         let response = provider.complete(request).await.unwrap();
         assert_eq!(response.content, "one");
     }
+
+    #[test]
+    fn ollama_provider_wraps_rig_completion_model() {
+        // The Ollama provider from rig produces a CompletionModel that can be
+        // wrapped in RigProvider. This test only constructs it (no network).
+        use rig::client::Nothing;
+        use rig::providers::ollama;
+
+        let client = ollama::Client::new(Nothing).unwrap();
+        let model = client.completion_model("qwen2.5:14b");
+        let provider = RigProvider::new(model, "qwen2.5:14b");
+        assert_eq!(provider.model_name(), "qwen2.5:14b");
+    }
 }
